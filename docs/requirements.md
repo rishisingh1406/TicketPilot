@@ -39,3 +39,32 @@ A ticket is considered resolved when the customer indicates that their issue has
 
 The 70–80% target means that TicketPilot should be able to handle 70–80 tickets out of every 100 tickets that reach the support system without human intervention.
 
+
+
+Workflow 1: Automated Support Resolution
+
+The user asks a query, and the agent receives it. It then classifies whether the query can be resolved through document-based reasoning or should be given to the support team.
+
+If the query can be handled by the agent, it checks the relevant documents, takes out the relevant information, processes and reasons over it, and returns a response to the user.
+
+The loop continues until the query is resolved or the agent determines that it cannot resolve the issue. If the loop has run multiple times without resolving the issue, the request should be moved to the support team.
+
+The agent sends the final answer to the user.
+
+
+Workflow 2: Policy Question with Multiple Policies
+
+The user asks a specific question about a policy, but multiple similar policies are present in the documents. The agent has to give control to the support team.
+
+The agent cannot choose between the policies because multiple policies are telling the same thing, and the agent is not able to decide which policy it should select.
+
+The agent transfers the request to the support team first, and then shows the user that it has been transferred and that the agent needs help from the support team.
+
+
+Workflow 3: Malicious Attack or Jailbreak
+
+The user enters a jailbreak attempt or jailbreak query. The agent then marks the user's ID and immediately blocks the user's access.
+
+The user should be blocked, and their ID and chat should be passed to the support team. The agent should not work with the user.
+
+
