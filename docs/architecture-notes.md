@@ -198,3 +198,167 @@ Responsibilities:
 Why these belong together:
 - This responsibility is the human-facing boundary of the system.
 - It allows support staff to inspect system state and take human actions without putting core business logic inside the UI.
+
+
+
+
+## Component Contracts
+
+### Component 1 — Integrity
+
+#### Purpose
+
+Act as the system's safety and correctness gate around the agent by checking whether requests are safe, whether the agent can safely handle them, and whether the generated answer is valid before it is returned.
+
+#### Inputs
+
+* User query
+* Relevant conversation context
+* Current evidence available to the agent
+* Agent-generated answer
+* Relevant system rules and validation requirements
+
+#### Outputs
+
+* Security decision: `ALLOW` or `BLOCK`
+* Handleability decision: `HANDLE` or `ESCALATE`
+* Answer validation decision: `VALID` or `INVALID`
+* Reason for each decision
+* Relevant context or evidence needed for escalation or retry
+
+#### Guarantees
+
+* A request marked `ALLOW` has passed the security checks defined by this component.
+* A request marked `HANDLE` has been determined to be safely handleable based on the available evidence and rules.
+* An answer marked `VALID` has passed the validation rules defined by this component.
+* The component does not generate the agent's answer or perform the agent's actions.
+
+#### Failure Behavior
+
+* The component fails closed when a required safety or correctness decision cannot be made.
+* A request must not proceed to the agent when the security decision cannot be safely determined.
+* An answer must not be returned to the user when required validation cannot be completed.
+* The failure and reason should be returned so the system can retry or escalate the ticket.
+
+---
+
+### Component 2 — Agent Orchestrator
+
+#### Purpose
+
+Control the agent's problem-solving process by reasoning about the current ticket state, retrieving information when needed, and requesting safe tool actions until the task is completed or the agent must stop.
+
+#### Inputs
+
+* Ticket information
+* User query and relevant conversation context
+* Current agent state
+* Previous actions and results
+* Retrieved knowledge/evidence
+* Tool results
+* Integrity decisions and constraints
+
+#### Outputs
+
+* Candidate answer
+* Requests for knowledge retrieval
+* Requests for tool execution
+* Updated agent state
+* Reason for stopping or requesting human escalation
+* Execution status
+
+#### Guarantees
+
+* The agent operates within a bounded execution loop.
+* The agent can only access knowledge and external actions through their defined interfaces.
+* The agent does not bypass security, validation, or tool-safety boundaries.
+* The agent returns a clear execution status when it completes, fails, or must stop.
+
+#### Failure Behavior
+
+* Stop the agent loop when the agent cannot safely continue or the execution limit is reached.
+* Return a clear failure or escalation reason.
+* Preserve the current ticket and agent state so the system can continue or escalate without losing important information.
+* Do not return an unvalidated final answer directly to the user.
+
+---
+
+### Component 3 — Ticket Lifecycle
+
+#### Purpose
+
+Manage the ticket throughout its lifecycle by creating the ticket, maintaining its durable state, and transferring it to the support process when escalation is required.
+
+#### Inputs
+
+* User request
+* Ticket information
+* Agent state and results
+* Integrity decisions
+* Escalation decision
+* Conversation and system state that needs to be persisted
+* Support escalation information
+
+#### Outputs
+
+* Created ticket with a unique identity
+* Current ticket state
+* Persisted system state
+* Escalation request/status
+* Confirmation or failure status for ticket and escalation operations
+
+#### Guarantees
+
+* Every ticket has a unique identity.
+* Important ticket and system state is durably persisted.
+* The ticket remains traceable throughout its lifecycle.
+* Escalation contains the context required by the support process.
+* Temporary infrastructure does not become the sole source of important system state.
+
+#### Failure Behavior
+
+* Return a clear failure when ticket creation or persistence cannot be completed.
+* Do not treat an unconfirmed persistence operation as successful.
+* If the support destination is unavailable, preserve the escalation state and allow it to be retried.
+* Prevent loss of important ticket state when temporary infrastructure fails.
+
+---
+
+### Component 4 — Human Reviewer Interface
+
+#### Purpose
+
+Provide the human-facing interface through which support staff can inspect escalated tickets and take the required human action.
+
+#### Inputs
+
+* Ticket information
+* Conversation history
+* Agent results
+* Retrieved evidence
+* Tool actions and results
+* Validation status
+* Escalation reason
+* Current ticket/review state
+* Human review decision
+
+#### Outputs
+
+* Ticket and system information displayed to the reviewer
+* Reviewer action such as approve, reject, resolve, or take over
+* Updated review status
+* Human decision sent to the backend
+
+#### Guarantees
+
+* Reviewers can access the information required to make an informed decision.
+* Human actions are sent through defined backend interfaces.
+* The UI does not contain core business logic.
+* Reviewer actions are associated with the correct ticket.
+
+#### Failure Behavior
+
+* Clearly indicate when ticket or review information cannot be loaded.
+* Do not silently discard reviewer actions.
+* Do not report a review action as successful unless the backend confirms it.
+* Preserve the review state when the backend or UI temporarily becomes unavailable.
