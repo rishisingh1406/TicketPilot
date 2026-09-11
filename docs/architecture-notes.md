@@ -444,4 +444,1062 @@ Provide the human-facing interface through which support staff can inspect escal
                        VALID       INVALID
                          │           │
                          ▼           ▼
+                        USER      Retry / Escalate# Architecture Notes — Day 2
+
+## 1. Major Responsibilities
+
+### It should be able to detect the jailbreak or harm attempt
+
+It should detect when the user is trying to perform a jailbreak attack or make a harmful request and handle it correctly.
+
+It exists for security reasons.
+
+It needs to know the user query and relevant conversation context, and it should exist between the user and the agent.
+
+Its main purpose is protecting the agent from the user.
+
+If the query is identified as a jailbreak or harmful request, the user should be blocked and the case should be passed to the support team.
+
+The security component should only make the decision, while another component handles sending the case to the support team.
+
+It should return that the user is blocked, why it thinks the request is unsafe, the cause/reason for its decision, and the relevant chat/conversation context to the support process.
+
+It should access the conversation but should not own the conversation history.
+
+When everything is safe, it should explicitly return an `ALLOW` decision so the agent can continue.
+
+---
+
+### It should be able to identify when the query is able to be handled by the agent and when it needs to be passed to the support team
+
+Its main job is to identify whether the query can be handled by the agent or whether it needs to be passed to the support team.
+
+If the query can be answered using sufficient knowledge from the manual/documentation, the agent should be able to handle it.
+
+If sufficient knowledge is not available, the request should be passed to the support team instead of allowing the agent to guess.
+
+This decision should happen at the start of the conversation and again when the agent is not able to answer the user.
+
+The main decision is:
+
+> "Given the query + current evidence, can the agent safely answer this right now?"
+
+Retrieval is another separate component/capability that can be accessed by the agent at any stage.
+
+The agent can retrieve relevant information when needed and then use the available evidence to determine whether it can safely answer.
+
+If the available evidence is sufficient, it can continue handling the request.
+
+If the available evidence is insufficient, it should pass the request to the support team instead of making up an answer.
+
+---
+
+### It should be able to receive and create a ticket
+
+It should be able to receive the user's request and create a ticket/request that the rest of the system can work with.
+
+It should validate the incoming request and make sure the required information is present.
+
+It should give the ticket a unique identity so the whole conversation and all the actions related to it can be tracked.
+
+It should pass the ticket into the system after the initial request is received.
+
+It should not decide how the agent solves the ticket.
+
+---
+
+### It should be able to retrieve relevant knowledge from the manual
+
+Its main job is to find relevant information from the available manuals/documentation based on the agent's request.
+
+The agent should be able to access retrieval whenever it needs more information.
+
+It should return the relevant knowledge/evidence to the agent.
+
+It should not decide whether the agent is capable of answering the user.
+
+It should not generate the final answer for the user.
+
+If retrieval fails, it should return a clear failure rather than silently returning incorrect or incomplete information.
+
+---
+
+### It should be able to reason and execute the agent loop
+
+Its main job is to control the process of solving the ticket.
+
+It should decide what action to take next based on the current state, available information, previous actions, and tool results.
+
+It should be able to request retrieval and tool execution when necessary.
+
+It should keep track of what has already been done and what needs to happen next.
+
+It should have a bounded execution loop so that the agent cannot continue indefinitely.
+
+It should stop when it has enough information to produce an answer, when it cannot safely continue, or when a human needs to take over.
+
+It should not directly bypass security, validation, or tool safety boundaries.
+
+---
+
+### It should be able to execute tools safely
+
+Its main job is to provide controlled access to external systems or actions that the agent needs.
+
+The agent should request a tool/action, but the tool execution layer should control how that action is actually executed.
+
+It should validate the tool request before execution.
+
+It should return the result or a clear failure to the agent.
+
+It should not allow the agent to directly perform arbitrary actions outside the allowed tool interface.
+
+It should define what happens when an external tool is unavailable or returns an error.
+
+---
+
+### It should be able to validate the agent's answer
+
+Its main job is to make sure the answer generated by the agent is valid before it is returned to the user.
+
+It should check whether the answer follows the required output structure and system rules.
+
+It should check whether the answer is supported by the available evidence when required.
+
+If the answer is invalid, it should prevent the invalid answer from being returned and allow the system to retry or escalate.
+
+It should not be responsible for generating the answer itself.
+
+---
+
+### It should be able to persist the important system state
+
+The system should have a durable place where important ticket, conversation, agent, tool, validation, and review state can be stored.
+
+The durable state should survive application restarts and failures.
+
+There should be one system of record for important state so that different components do not create conflicting sources of truth.
+
+Temporary/cache data should not become the only copy of important information.
+
+The system should be able to reconstruct the important state when temporary infrastructure fails.
+
+---
+
+### It should be able to escalate a ticket to the support team
+
+Its main job is to transfer cases that the agent cannot safely handle to the human support process.
+
+It should receive an escalation decision and the information required by the support team.
+
+It should not decide whether a ticket needs escalation; that decision should come from the relevant component such as security, handleability, or the agent loop.
+
+It should make sure the escalation is recorded and that the support team receives the necessary context.
+
+It should handle failures when the support destination is unavailable.
+
+---
+
+### It should provide a human reviewer interface
+
+Its main job is to allow a human to inspect tickets that require review.
+
+The reviewer should be able to see the user's conversation, agent results that are appropriate to expose, retrieved evidence, tool actions/results, validation status, and the reason the ticket was escalated.
+
+The reviewer should be able to make the required human decision, such as approving, rejecting, resolving, or taking over the ticket.
+
+The UI should not contain the core business logic of the system.
+
+It should communicate with the backend through defined interfaces.
+
+---
+
+# 2. Component Boundaries
+
+The initial responsibilities were grouped into components and then separated where the responsibilities had different ownership, change patterns, or system boundaries.
+
+A dependency between two responsibilities does not necessarily mean that they belong to the same component.
+
+The final P1 architecture contains seven logical components.
+
+---
+
+## Component 1 — Ticket Lifecycle
+
+### Responsibilities
+
+* Receive and create a ticket
+* Assign a unique ticket identity
+* Maintain ticket and conversation state
+* Persist important system state
+* Manage ticket lifecycle transitions
+* Record and manage escalation state
+* Transfer escalated tickets to the support process
+
+### Why these belong together
+
+These responsibilities manage the ticket throughout its lifecycle, from creation through autonomous processing and, when necessary, human escalation.
+
+The component owns the durable lifecycle state of the ticket but does not own the agent's reasoning decisions.
+
+---
+
+## Component 2 — Integrity Gate
+
+### Responsibilities
+
+* Detect jailbreak or harmful requests
+* Determine whether the request can be safely handled by the agent
+* Enforce fail-closed behavior when a required safety decision cannot be made
+
+### Why these belong together
+
+These responsibilities act as safety gates around autonomous execution.
+
+They determine whether the system should allow the agent to proceed or whether the request must stop and be escalated.
+
+The Integrity Gate does not generate answers, execute tools, or perform the escalation itself.
+
+---
+
+## Component 3 — Agent Orchestrator
+
+### Responsibilities
+
+* Reason and execute the bounded agent loop
+* Decide the next action
+* Decide when retrieval is required
+* Decide when a tool is required
+* Evaluate intermediate results
+* Decide whether another action should be attempted
+* Decide when autonomous execution must stop
+* Decide when the ticket should be escalated
+
+### Why these belong together
+
+These responsibilities control the agent's problem-solving process.
+
+The Agent Orchestrator owns decisions about what the agent should do next, while external capabilities such as retrieval and tool execution remain separate components.
+
+---
+
+## Component 4 — Retrieval
+
+### Responsibilities
+
+* Search approved manuals and documentation
+* Retrieve relevant evidence
+* Return evidence and associated metadata
+* Report retrieval success or failure
+
+### Why these belong together
+
+These responsibilities provide the knowledge-retrieval capability to the agent.
+
+Retrieval supplies evidence but does not decide whether the agent can safely answer the user.
+
+---
+
+## Component 5 — Tool Execution
+
+### Responsibilities
+
+* Receive tool/action requests from the agent
+* Validate tool requests against defined constraints
+* Execute controlled external actions
+* Return tool results or structured failures
+
+### Why these belong together
+
+These responsibilities provide controlled access to external systems.
+
+The agent can request an action, but the execution layer controls whether and how that action is actually performed.
+
+---
+
+## Component 6 — Answer Validator
+
+### Responsibilities
+
+* Validate the agent's generated answer
+* Validate required output structure
+* Validate applicable system rules and policies
+* Check whether the answer is sufficiently supported by available evidence
+* Return a `VALID` or `INVALID` decision
+
+### Why these belong together
+
+These responsibilities determine whether an agent-generated answer is safe and acceptable to return.
+
+The Answer Validator does not generate or modify the answer and does not decide how the agent should recover from an invalid answer.
+
+---
+
+## Component 7 — Human Reviewer Interface
+
+### Responsibilities
+
+* Display escalated tickets
+* Display relevant conversation and system context
+* Display appropriate agent results
+* Display retrieved evidence and tool activity
+* Display validation and escalation information
+* Allow reviewers to approve, reject, resolve, or take over a ticket
+* Send human decisions to the backend
+
+### Why these belong together
+
+These responsibilities form the human-facing boundary of the system.
+
+The UI allows support staff to inspect and act on tickets without containing the core business logic.
+
+---
+
+# 3. Component Contracts
+
+## Component 1 — Ticket Lifecycle
+
+### Purpose
+
+Manage the ticket throughout its lifecycle by creating the ticket, maintaining its durable state, and transferring it to the support process when escalation is required.
+
+### Inputs
+
+* User request
+* Ticket information
+* Agent state and results
+* Integrity decisions
+* Escalation decision
+* Conversation and system state that needs to be persisted
+* Support escalation information
+
+### Outputs
+
+* Created ticket with a unique identity
+* Current ticket state
+* Persisted system state
+* Escalation request/status
+* Confirmation or failure status for ticket and escalation operations
+
+### Guarantees
+
+* Every ticket has a unique identity.
+* Important ticket and system state is durably persisted.
+* The ticket remains traceable throughout its lifecycle.
+* Escalation contains the context required by the support process.
+* Temporary infrastructure does not become the sole source of important system state.
+
+### Failure Behavior
+
+* Return a clear failure when ticket creation or persistence cannot be completed.
+* Do not treat an unconfirmed persistence operation as successful.
+* If the support destination is unavailable, preserve the escalation state and allow it to be retried.
+* Prevent loss of important ticket state when temporary infrastructure fails.
+
+---
+
+## Component 2 — Integrity Gate
+
+### Purpose
+
+Act as the system's safety gate around autonomous execution by checking whether a request is safe and whether the agent can safely handle it.
+
+### Inputs
+
+* User query
+* Relevant conversation context
+* Current evidence available to the agent
+* Relevant security and handleability rules
+
+### Outputs
+
+* Security decision: `ALLOW` or `BLOCK`
+* Handleability decision: `HANDLE` or `ESCALATE`
+* Reason for each decision
+* Relevant context required for escalation
+
+### Guarantees
+
+* A request marked `ALLOW` has passed the required security checks.
+* A request marked `HANDLE` has been determined to be safely handleable based on the available evidence and rules.
+* The component does not generate answers.
+* The component does not execute tools.
+* The component does not perform the escalation itself.
+
+### Failure Behavior
+
+* Retry a failed safety or handleability decision within defined limits.
+* Fail closed when a required decision cannot be safely determined.
+* Do not allow autonomous execution when the safety decision cannot be established.
+* Return the failure and reason so the ticket can be stopped or escalated.
+
+---
+
+## Component 3 — Agent Orchestrator
+
+### Purpose
+
+Control the agent's problem-solving process by reasoning about the current ticket state and deciding which action should be taken next until the task is completed or the agent must stop.
+
+### Inputs
+
+* Ticket information
+* User query and relevant conversation context
+* Current agent state
+* Previous actions and results
+* Retrieved knowledge/evidence
+* Tool results
+* Integrity decisions and constraints
+
+### Outputs
+
+* Candidate answer
+* Requests for knowledge retrieval
+* Requests for tool execution
+* Updated agent state
+* Reason for stopping or requesting human escalation
+* Execution status
+
+### Guarantees
+
+* The agent operates within a bounded execution loop.
+* The agent can only access knowledge and external actions through their defined interfaces.
+* The agent does not bypass security, validation, or tool-safety boundaries.
+* The agent returns a clear execution status when it completes, fails, or must stop.
+* A candidate answer is passed to the Answer Validator before it can be returned to the user.
+
+### Failure Behavior
+
+* Stop the agent loop when the agent cannot safely continue or the execution limit is reached.
+* Return a clear failure or escalation reason.
+* Preserve the current ticket and agent state so the system can continue or escalate without losing important information.
+* Do not return an unvalidated final answer directly to the user.
+* If repeated actions fail within the defined limits, stop autonomous execution rather than guessing.
+
+---
+
+## Component 4 — Retrieval
+
+### Purpose
+
+Provide the agent with relevant evidence from approved manuals and documentation.
+
+### Inputs
+
+* Retrieval request from the Agent Orchestrator
+* Search/query information
+* Relevant ticket or conversation context when required
+
+### Outputs
+
+* Retrieved evidence
+* Evidence metadata
+* Retrieval status
+* Structured failure information when retrieval cannot be completed
+
+### Guarantees
+
+* Only approved knowledge sources are searched.
+* Retrieval returns the evidence available from the configured knowledge source.
+* Retrieval does not decide whether the evidence is sufficient to answer the user.
+* Retrieval does not generate the final answer.
+
+### Failure Behavior
+
+* Return a structured retrieval failure when the retrieval operation cannot be completed.
+* Do not silently return incorrect or incomplete evidence as a successful result.
+* The Agent Orchestrator decides whether to retry, use another action, or escalate.
+* Retries remain bounded.
+
+---
+
+## Component 5 — Tool Execution
+
+### Purpose
+
+Provide controlled access to external systems and actions requested by the Agent Orchestrator.
+
+### Inputs
+
+* Tool/action request
+* Tool parameters
+* Relevant execution context
+* Tool-specific constraints
+
+### Outputs
+
+* Tool execution result
+* Execution status
+* Error/failure information
+* Retryability information when applicable
+
+### Guarantees
+
+* Tool requests are validated before execution.
+* Only allowed tools and actions can be executed.
+* The agent cannot directly execute arbitrary external actions.
+* Tool execution returns a clear result or structured failure.
+* Tool-specific safety constraints are enforced by the execution layer.
+
+### Failure Behavior
+
+* Return a structured failure when execution fails.
+* Identify whether a failure is retryable when this can be determined.
+* Do not blindly repeat non-retryable failures.
+* The Agent Orchestrator decides whether to retry, choose another action, or escalate.
+* Retries remain bounded.
+
+---
+
+## Component 6 — Answer Validator
+
+### Purpose
+
+Validate an agent-generated answer before it can be returned to the user.
+
+### Inputs
+
+* Candidate answer
+* User query
+* Relevant conversation context
+* Available evidence
+* Applicable system rules and validation requirements
+
+### Outputs
+
+* Validation decision: `VALID` or `INVALID`
+* Validation reason
+* Validation results/errors
+
+### Guarantees
+
+* A `VALID` answer has passed the required validation checks.
+* An `INVALID` answer is not returned to the user.
+* The component does not generate the answer.
+* The component does not decide whether the agent should retry or escalate.
+
+### Failure Behavior
+
+* If validation cannot be completed, the answer must not be returned.
+* Return a clear validation failure.
+* The Agent Orchestrator decides whether to retry or escalate.
+* Validation retries remain bounded.
+
+---
+
+## Component 7 — Human Reviewer Interface
+
+### Purpose
+
+Provide the human-facing interface through which support staff can inspect escalated tickets and take the required human action.
+
+### Inputs
+
+* Ticket information
+* Conversation history
+* Agent results
+* Retrieved evidence
+* Tool actions and results
+* Validation status
+* Escalation reason
+* Current ticket/review state
+* Human review decision
+
+### Outputs
+
+* Ticket and system information displayed to the reviewer
+* Reviewer action such as approve, reject, resolve, or take over
+* Updated review status
+* Human decision sent to the backend
+
+### Guarantees
+
+* Reviewers can access the information required to make an informed decision.
+* Human actions are sent through defined backend interfaces.
+* The UI does not contain core business logic.
+* Reviewer actions are associated with the correct ticket.
+
+### Failure Behavior
+
+* Clearly indicate when ticket or review information cannot be loaded.
+* Do not silently discard reviewer actions.
+* Do not report a review action as successful unless the backend confirms it.
+* Preserve the review state when the backend or UI temporarily becomes unavailable.
+
+---
+
+# 4. High-Level Architecture
+
+## P1 Architecture
+
+```text
+                              ┌──────────────┐
+                              │     USER     │
+                              └──────┬───────┘
+                                     │
+                                     ▼
+                         ┌──────────────────────┐
+                         │   Ticket Lifecycle   │
+                         │                      │
+                         │ Create ticket       │
+                         │ Maintain state      │
+                         │ Escalation lifecycle│
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │    Integrity Gate    │
+                         │                      │
+                         │ Security             │
+                         │ Handleability        │
+                         └──────────┬───────────┘
+                                    │
+                         ┌──────────┴──────────┐
+                         │                     │
+                      BLOCK /               ALLOW +
+                     ESCALATE               HANDLE
+                         │                     │
+                         │                     ▼
+                         │          ┌─────────────────────┐
+                         │          │ Agent Orchestrator  │
+                         │          │                     │
+                         │          │ Agent loop          │
+                         │          │ Next action         │
+                         │          │ Bounded execution   │
+                         │          │ Recovery decisions  │
+                         │          └──────┬──────┬───────┘
+                         │                 │      │
+                         │                 │      │
+                         │                 ▼      ▼
+                         │          ┌─────────┐ ┌──────────────┐
+                         │          │Retrieval│ │Tool Execution│
+                         │          └────┬────┘ └──────┬───────┘
+                         │               │             │
+                         │               └──────┬──────┘
+                         │                      │
+                         │                   results
+                         │                      │
+                         │                      ▼
+                         │             ┌────────────────┐
+                         │             │ Integrity Gate │
+                         │             └───────┬────────┘
+                         │                     │
+                         │                     ▼
+                         │              Agent continues
+                         │                     │
+                         │                     └──────↺
+                         │
+                         ▼
+                  ┌──────────────────────┐
+                  │ Human Reviewer UI    │
+                  └──────────────────────┘
+
+
+                  Agent produces final answer
+                              │
+                              ▼
+                    ┌─────────────────────┐
+                    │   Answer Validator  │
+                    └──────────┬──────────┘
+                               │
+                         ┌─────┴─────┐
+                         │           │
+                       VALID       INVALID
+                         │           │
+                         ▼           ▼
                         USER      Retry / Escalate
+```
+
+---
+
+# 5. Technology Mapping
+
+The logical architecture is mapped to the following technologies for the P1 implementation.
+
+## FastAPI
+
+FastAPI provides the external API boundary for TicketPilot.
+
+It exposes the Ticket Lifecycle capabilities through API endpoints and provides the interface through which external clients can submit requests and interact with the system.
+
+The Ticket Lifecycle remains responsible for the application-level ticket lifecycle and coordinates the interaction with the rest of the components.
+
+FastAPI does not decide whether a ticket should be escalated.
+
+---
+
+## PostgreSQL + pgvector
+
+PostgreSQL is the system of record for TicketPilot.
+
+Important durable state is stored in PostgreSQL, including:
+
+* Ticket information
+* Conversation history
+* Security events
+* Agent execution state and results
+* Tool execution state/results
+* Validation results
+* Escalation state
+* Review state
+* Documents and document metadata
+* Vector embeddings where applicable
+
+pgvector is used where vector similarity search is required.
+
+PostgreSQL is the source of truth for important system state.
+
+---
+
+## Redis
+
+Redis is used as a temporary and recomputable cache.
+
+Examples include:
+
+* Frequently accessed responses
+* Frequently retrieved RAG results
+* Other data where recomputation is acceptable
+
+A cache miss is not treated as a system failure.
+
+The system retrieves or recomputes the required data from the underlying source and may cache the result again.
+
+Redis must never be the only source of important system state.
+
+If Redis becomes unavailable, TicketPilot should continue using the underlying durable source where possible, although latency and cost may increase.
+
+---
+
+## Streamlit
+
+Streamlit provides the human reviewer interface.
+
+It allows support staff to inspect:
+
+* Escalated tickets
+* Conversation history
+* Agent results
+* Retrieved evidence
+* Tool actions and results
+* Validation status
+* Escalation reasons
+* Current review state
+
+It also allows reviewers to perform actions such as approving, rejecting, resolving, or taking over a ticket.
+
+Streamlit does not contain the core business logic. It communicates with the backend through defined interfaces.
+
+---
+
+## Caddy
+
+Caddy acts as the public reverse proxy and HTTPS entry point.
+
+The external request path is conceptually:
+
+```text
+Internet / Browser
+       │
+       ▼
+     Caddy
+       │
+       ├──────► FastAPI
+       │
+       └──────► Streamlit
+```
+
+Caddy receives HTTP/HTTPS traffic from the external world and routes it to the appropriate internal service.
+
+Caddy is an infrastructure and networking boundary. It does not contain TicketPilot's agent, ticket, validation, or escalation logic.
+
+---
+
+# 6. Failure Paths
+
+## Retrieval Failure
+
+If Retrieval cannot retrieve the required knowledge:
+
+1. Retrieval returns a structured failure.
+2. The Agent Orchestrator evaluates the failure.
+3. The orchestrator may retry within a bounded limit.
+4. If retrieval remains unavailable, the agent must not guess.
+5. The ticket is stopped or escalated to support.
+6. The relevant failure and execution state are persisted.
+
+---
+
+## Tool Failure
+
+If Tool Execution fails:
+
+1. Tool Execution detects the failure.
+2. It returns a structured failure to the Agent Orchestrator.
+3. The failure should indicate whether retrying may be appropriate.
+4. The Agent Orchestrator decides whether to retry, use another action, or stop.
+5. Retries remain bounded.
+6. Non-retryable failures are not blindly repeated.
+7. Tool failure and relevant execution state are persisted.
+
+---
+
+## Invalid Answer
+
+If the Agent Orchestrator produces an answer:
+
+1. The candidate answer is passed to the Answer Validator.
+2. The Answer Validator evaluates the answer.
+3. If the result is `VALID`, the answer can proceed toward the user.
+4. If the result is `INVALID`, the answer must not reach the user.
+5. The Agent Orchestrator decides whether to retry.
+6. If bounded retries are exhausted, the ticket is escalated.
+7. The invalid attempt and validation result are persisted.
+
+---
+
+## Agent Loop Limit
+
+The Agent Orchestrator owns the execution limit.
+
+If the agent reaches the maximum allowed iterations, time, or other execution boundary:
+
+1. Autonomous execution stops.
+2. The current state is persisted.
+3. A clear stopping reason is recorded.
+4. The ticket is escalated to support.
+
+The agent must never continue indefinitely.
+
+---
+
+## Unsafe Request
+
+If the Integrity Gate identifies a request as unsafe:
+
+1. The request is blocked from autonomous processing.
+2. The security decision and reason are recorded.
+3. Relevant conversation context is preserved.
+4. The ticket enters the escalation process.
+5. The agent must not continue processing the unsafe request.
+
+If the Integrity Gate cannot safely determine whether the request is allowed, it fails closed.
+
+---
+
+## Persistence Failure
+
+If PostgreSQL or another required durable persistence operation fails:
+
+1. The Ticket Lifecycle detects the persistence failure.
+2. The system retries when appropriate.
+3. The system must not report the operation as successfully persisted until durable confirmation is received.
+4. Redis must not become a replacement source of truth.
+5. If durable persistence cannot be established, autonomous execution should stop or the workflow should enter a recoverable failure state.
+6. The system must not pretend that important state has been safely stored when it has not.
+
+---
+
+## Support Destination Unavailable
+
+If the support destination is unavailable:
+
+1. The Ticket Lifecycle records the escalation state durably.
+2. The ticket is marked as requiring support delivery.
+3. The system retries support delivery according to bounded retry policy.
+4. The ticket and escalation context remain preserved until delivery succeeds.
+5. The system must not lose the escalation simply because the support destination is temporarily unavailable.
+
+---
+
+# 7. Architectural Invariants
+
+The following rules are treated as architectural invariants for the P1 system:
+
+1. **External dependency failures must be bounded. Repeated failure must never cause the agent to guess.**
+
+2. **If the system cannot safely determine that the agent can continue, the ticket is escalated to support.**
+
+3. **No generated answer reaches the user without passing the Answer Validator.**
+
+4. **Every autonomous execution path has a bounded termination condition.**
+
+5. **The agent can request an action, but it cannot directly execute an external action.**
+
+6. **PostgreSQL is the system of record for important state.**
+
+7. **Redis is an optimization layer and must not become the only source of important system state.**
+
+8. **The UI does not contain core business logic.**
+
+9. **Components communicate through defined interfaces rather than directly bypassing component boundaries.**
+
+10. **Escalation decisions belong to the relevant decision-making component, while Ticket Lifecycle owns recording and managing the escalation lifecycle.**
+
+---
+
+# 8. ADR-001: Use a Bounded ReAct Loop
+
+## Status
+
+Accepted
+
+## Context
+
+TicketPilot needs to handle support tickets where the execution path is not fixed. The agent may or may not need retrieval or tool execution depending on the current ticket state, available evidence, and results from previous actions.
+
+A fixed chained workflow would force a predetermined execution order, which does not fit these dynamic cases.
+
+However, unlimited agent execution would create problems such as uncontrolled cost, unpredictable execution, and cases where the agent continues trying to solve a problem that should instead be handled by the support team.
+
+## Decision
+
+Use a bounded ReAct-style agent loop.
+
+The agent can dynamically decide whether to retrieve knowledge, execute a tool, evaluate the result, take another action, produce an answer, or stop and escalate to support.
+
+The loop is bounded by execution limits such as maximum iterations, time, and retries.
+
+If the agent cannot safely resolve the ticket within those limits, the ticket is escalated to the support team.
+
+## Trade-offs
+
+### Benefits
+
+* Supports dynamic execution paths.
+* Retrieval and tool usage are conditional.
+* Agent can react to intermediate results.
+* Prevents uncontrolled autonomous execution.
+* Controls LLM and tool costs.
+* Provides a defined path to human escalation.
+
+### Costs
+
+* Potentially higher cost than a fixed workflow.
+* More difficult to debug because execution paths vary.
+* Less predictable execution.
+* Requires stronger observability and evaluation.
+
+## Consequences
+
+TicketPilot will not attempt to autonomously solve every ticket.
+
+The system is designed to efficiently resolve tickets that can be safely handled by the agent and escalate cases that cannot be resolved within the defined execution boundaries.
+
+The bounded loop becomes an explicit safety, cost, and operational control.
+
+---
+
+# 9. ADR-002: PostgreSQL as System of Record
+
+## Status
+
+Accepted
+
+## Context
+
+TicketPilot needs durable storage for important system data such as ticket information, conversation history, documents, document metadata, embeddings, security events, agent execution state, and escalation/review state.
+
+Redis provides very fast access because it primarily serves data from memory, but using Redis as the primary storage for all application data would be unnecessarily expensive and would make important system state dependent on a cache.
+
+Redis data may also be lost, expired, or unavailable.
+
+A failure of Redis should therefore not result in the loss of important TicketPilot data.
+
+## Decision
+
+PostgreSQL will be the system of record for TicketPilot.
+
+Important and durable system state will be stored in PostgreSQL.
+
+PostgreSQL will also store document data and metadata and, where applicable, vector embeddings using pgvector.
+
+Redis will be used only as a cache for temporary and recomputable data, such as frequently accessed responses and frequently retrieved RAG results.
+
+A cache miss will not be treated as a system failure.
+
+The system will retrieve or recompute the required data from the underlying source and may cache the result in Redis again when it is frequently accessed.
+
+Redis must never be the only source of important system state.
+
+## Trade-offs
+
+### Benefits
+
+* Provides a durable source of truth for important system data.
+* Prevents critical data from depending on Redis availability.
+* Redis can improve response speed for frequently accessed data.
+* Redis caching can reduce repeated retrieval and LLM costs.
+* Cache data can be safely regenerated if Redis is lost.
+* The system can continue operating when Redis is unavailable, although potentially with reduced performance.
+
+### Costs
+
+* PostgreSQL access may be slower than Redis for frequently accessed data.
+* The system needs additional cache logic and cache invalidation/repopulation behavior.
+* When Redis is unavailable, some operations may have higher latency and cost.
+
+## Consequences
+
+TicketPilot separates durable state from performance optimization.
+
+PostgreSQL remains the source of truth, while Redis is an optimization layer.
+
+If Redis is lost or unavailable, TicketPilot must not lose important business data.
+
+The system can fall back to PostgreSQL or the underlying retrieval source, recompute the required result, and optionally repopulate the cache.
+
+This means Redis failure affects performance and cost, but should not compromise the integrity or durability of the system's important state.
+
+---
+
+# 10. Day 2 Architecture Decision Summary
+
+The final P1 architecture separates responsibilities according to ownership and change boundaries rather than simply grouping everything required by the agent into one component.
+
+The final logical components are:
+
+```text
+Ticket Lifecycle
+        │
+        ▼
+Integrity Gate
+        │
+        ▼
+Agent Orchestrator
+   ┌────┴────┐
+   ▼         ▼
+Retrieval  Tool Execution
+   └────┬────┘
+        ▼
+Agent continues
+        │
+        ▼
+Answer Validator
+   ┌────┴────┐
+   ▼         ▼
+ VALID     INVALID
+   │         │
+   ▼         ▼
+ USER    Retry / Escalate
+
+Escalation ─────────► Human Reviewer Interface
+```
+
+The key architectural ownership decisions are:
+
+* **Ticket Lifecycle owns the ticket and durable lifecycle state.**
+* **Integrity Gate owns security and handleability decisions.**
+* **Agent Orchestrator owns autonomous reasoning and execution decisions.**
+* **Retrieval owns knowledge retrieval.**
+* **Tool Execution owns controlled external actions.**
+* **Answer Validator owns final answer validation.**
+* **Human Reviewer Interface owns the human-facing review boundary.**
+* **PostgreSQL owns durable system state.**
+* **Redis provides recomputable performance optimization.**
+* **FastAPI provides the external API boundary.**
+* **Caddy provides the public reverse-proxy/network boundary.**
+
+The architecture is intentionally P1 rather than a final implementation design.
+
+Implementation details can be refined during the next engineering stages when concrete interfaces, data models, state transitions, and operational requirements are defined.
