@@ -362,3 +362,86 @@ Provide the human-facing interface through which support staff can inspect escal
 * Do not silently discard reviewer actions.
 * Do not report a review action as successful unless the backend confirms it.
 * Preserve the review state when the backend or UI temporarily becomes unavailable.
+
+
+
+## 3. High-Level Architecture
+
+### P1 Architecture
+
+
+                              ┌──────────────┐
+                              │     USER     │
+                              └──────┬───────┘
+                                     │
+                                     ▼
+                         ┌──────────────────────┐
+                         │   Ticket Lifecycle   │
+                         │                      │
+                         │ Create ticket       │
+                         │ Maintain state      │
+                         │ Escalation lifecycle│
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │    Integrity Gate    │
+                         │                      │
+                         │ Security             │
+                         │ Handleability        │
+                         └──────────┬───────────┘
+                                    │
+                         ┌──────────┴──────────┐
+                         │                     │
+                      BLOCK /               ALLOW +
+                     ESCALATE               HANDLE
+                         │                     │
+                         │                     ▼
+                         │          ┌─────────────────────┐
+                         │          │ Agent Orchestrator  │
+                         │          │                     │
+                         │          │ Agent loop          │
+                         │          │ Next action         │
+                         │          │ Bounded execution   │
+                         │          │ Recovery decisions  │
+                         │          └──────┬──────┬───────┘
+                         │                 │      │
+                         │                 │      │
+                         │                 ▼      ▼
+                         │          ┌─────────┐ ┌──────────────┐
+                         │          │Retrieval│ │Tool Execution│
+                         │          └────┬────┘ └──────┬───────┘
+                         │               │             │
+                         │               └──────┬──────┘
+                         │                      │
+                         │                   results
+                         │                      │
+                         │                      ▼
+                         │             ┌────────────────┐
+                         │             │ Integrity Gate │
+                         │             └───────┬────────┘
+                         │                     │
+                         │                     ▼
+                         │              Agent continues
+                         │                     │
+                         │                     └──────↺
+                         │
+                         ▼
+                  ┌──────────────────────┐
+                  │ Human Reviewer UI    │
+                  └──────────────────────┘
+
+
+                  Agent produces final answer
+                              │
+                              ▼
+                    ┌─────────────────────┐
+                    │   Answer Validator  │
+                    └──────────┬──────────┘
+                               │
+                         ┌─────┴─────┐
+                         │           │
+                       VALID       INVALID
+                         │           │
+                         ▼           ▼
+                        USER      Retry / Escalate
