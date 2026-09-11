@@ -1,52 +1,200 @@
-# Architecture Notes  Day 2 
+# Architecture Notes  Day 2
 
-## Major responsibilities 
+## Major responsibilities
+
+### It should be able to detect the jailbreak or harm attempt
+
+It should detect when the user is trying to perform a jailbreak attack or make a harmful request and handle it correctly.
+
+It exists for security reasons.
+
+It needs to know the user query and relevant conversation context, and it should exist between the user and the agent.
+
+Its main purpose is protecting the agent from the user.
+
+If the query is identified as a jailbreak or harmful request, the user should be blocked and the case should be passed to the support team.
+
+The security component should only make the decision, while another component handles sending the case to the support team.
+
+It should return that the user is blocked, why it thinks the request is unsafe, the cause/reason for its decision, and the entire relevant chat/conversation context to the support process.
+
+It should access the conversation but should not own the conversation history.
+
+When everything is safe, it should explicitly return an `ALLOW` decision so the agent can continue.
+
+### It should be able to identify when the query is able to be handled by the agent and when it needs to be passed to the support team
+
+Its main job is to identify whether the query can be handled by the agent or whether it needs to be passed to the support team.
+
+If the query can be answered using sufficient knowledge from the manual/documentation, the agent should be able to handle it.
+
+If sufficient knowledge is not available, the request should be passed to the support team instead of allowing the agent to guess.
+
+This decision should happen at the start of the conversation and again when the agent is not able to answer the user.
+
+This same responsibility can be converted into one entire component.
+
+The main decision is:
+
+"Given the query + current evidence, can the agent safely answer this right now?"
+
+Retrieval is another separate component/capability that can be accessed by the agent at any stage.
+
+The agent can retrieve relevant information when needed and then use the available evidence to determine whether it can safely answer.
+
+If the available evidence is sufficient, it can continue handling the request.
+
+If the available evidence is insufficient, it should pass the request to the support team instead of making up an answer.
+
+### It should be able to receive and create a ticket
+
+It should be able to receive the user's request and create a ticket/request that the rest of the system can work with.
+
+It should validate the incoming request and make sure the required information is present.
+
+It should give the ticket a unique identity so the whole conversation and all the actions related to it can be tracked.
+
+It should pass the ticket into the system after the initial request is received.
+
+It should not decide how the agent solves the ticket.
+
+### It should be able to retrieve relevant knowledge from the manual
+
+Its main job is to find relevant information from the available manuals/documentation based on the agent's request.
+
+The agent should be able to access retrieval whenever it needs more information.
+
+It should return the relevant knowledge/evidence to the agent.
+
+It should not decide whether the agent is capable of answering the user.
+
+It should not generate the final answer for the user.
+
+If retrieval fails, it should return a clear failure rather than silently returning incorrect or incomplete information.
+
+### It should be able to reason and execute the agent loop
+
+Its main job is to control the process of solving the ticket.
+
+It should decide what action to take next based on the current state, available information, previous actions, and tool results.
+
+It should be able to retrieve information and use tools when necessary.
+
+It should keep track of what has already been done and what needs to happen next.
+
+It should have a bounded execution loop so that the agent cannot continue indefinitely.
+
+It should stop when it has enough information to produce an answer, when it cannot safely continue, or when a human needs to take over.
+
+It should not directly bypass security, validation, or tool safety boundaries.
+
+### It should be able to execute tools safely
+
+Its main job is to provide controlled access to external systems or actions that the agent needs.
+
+The agent should request a tool/action, but the tool execution layer should control how that action is actually executed.
+
+It should validate the tool request before execution.
+
+It should return the result or a clear failure to the agent.
+
+It should not allow the agent to directly perform arbitrary actions outside the allowed tool interface.
+
+It should define what happens when an external tool is unavailable or returns an error.
+
+### It should be able to validate the agent's answer
+
+Its main job is to make sure the answer generated by the agent is valid before it is returned to the user.
+
+It should check whether the answer follows the required output structure and system rules.
+
+It should check whether the answer is supported by the available evidence when required.
+
+If the answer is invalid, it should prevent the invalid answer from being returned and allow the system to retry or escalate.
+
+It should not be responsible for generating the answer itself.
+
+### It should be able to persist the important system state
+
+The system should have a durable place where important ticket, conversation, agent, tool, validation, and review state can be stored.
+
+The durable state should survive application restarts and failures.
+
+There should be one system of record for important state so that different components do not create conflicting sources of truth.
+
+Temporary/cache data should not become the only copy of important information.
+
+The system should be able to reconstruct the important state when temporary infrastructure fails.
+
+### It should be able to escalate a ticket to the support team
+
+Its main job is to transfer cases that the agent cannot safely handle to the human support process.
+
+It should receive an escalation decision and the information required by the support team.
+
+It should not decide whether a ticket needs escalation; that decision should come from the relevant component such as security, handleability, or the agent loop.
+
+It should make sure the escalation is recorded and that the support team receives the necessary context.
+
+It should handle failures when the support destination is unavailable.
+
+### It should provide a human reviewer interface
+
+Its main job is to allow a human to inspect tickets that require review.
+
+The reviewer should be able to see the user's conversation, agent reasoning/results that are appropriate to expose, retrieved evidence, tool actions/results, validation status, and the reason the ticket was escalated.
+
+The reviewer should be able to make the required human decision, such as approving, rejecting, resolving, or taking over the ticket.
+
+The UI should not contain the core business logic of the system.
+
+It should communicate with the backend through defined interfaces.
 
 
-### It shoud able to detect the jailbreak or harm attemp 
-
-it detect the person doing the harm like he is trying to do jail attack or something and handels it correctly 
-
-it exsit for security reason 
-
-it needs to know the the user query and it shoud exesit between the user and the agent
-
-protecting the agent from the user 
-
-if the query is identifyed as jailbreak or harm the user should be blocked and the query should be passed to support team 
-
-like it pass its decision and another component ship it to the team 
-
-like it should retrun the user is blocked why it think so and return the entire chat and cause for its decison to support team 
-
-it should acces it 
-
-do nothing when its all safe 
-
-security explicitly returns an allow decision -> agent continues
-
-
-### it should be able to identify when the query is able to be handeled by the agent and when it needs to be passed to the support team 
+this is my responsibility section i think we are complete now lets move further
 
 
 
-like its main job is to identify weather the query can be answerd by looking into manual document like it is procedural type query if yes than it should execute it else it should pass it to the support team 
 
-like if to generate the answer there is sufficient knwoledge  in manuel is present than it should answer by self or else pass it t
+## Component Boundaries
 
-it should happen at the start of conversation and when the agent is not able to answer the user 
+### Component 1
+Responsibilities:
+- Detect jailbreak or harmful requests
+- Determine whether the request can be safely handled by the agent
+- Validate the agent's final answer
 
-yes cuz this same responsiblity can be converted into one entire component 
+Why these belong together:
+- These responsibilities act as safety and correctness gates around the agent.
+- They determine whether the system should allow the request to proceed, continue processing, return an answer, or stop/escalate.
 
-like based on the query we will decide the manual contains sufficient knowledge 
+### Component 2
+Responsibilities:
+- Reason and execute the agent loop
+- Retrieve relevant knowledge from the manuals/documentation
+- Execute tools safely
 
-like retrieval is another component it can be accesed by agent at any stage 
-
-like agent retrieves relevent info if he thinks he can aswer it returns it else it passes to the support team 
-
-
-"Given the query + current evidence,
-can the agent safely answer this right now?"
+Why these belong together:
+- These responsibilities form the agent's core problem-solving capability.
+- The agent decides what information or action is needed, retrieval provides knowledge, and tool execution provides controlled access to external actions.
 
 
+### Component 3
+Responsibilities:
+- Receive and create a ticket
+- Persist important system state
+- Escalate a ticket to the support team
 
+Why these belong together:
+- These responsibilities manage the ticket throughout its lifecycle.
+- They handle entering the ticket into the system, maintaining its durable state, and moving it into the human support process when necessary.
+
+
+
+### Component 4
+Responsibilities:
+- Provide a human reviewer interface
+
+Why these belong together:
+- This responsibility is the human-facing boundary of the system.
+- It allows support staff to inspect system state and take human actions without putting core business logic inside the UI.
