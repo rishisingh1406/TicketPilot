@@ -25,7 +25,7 @@ tickets
 """
 
 from enum import Enum
-from sqlalchemy import Column, Integer, String, DateTime, Enum as SQLEnum, text
+from sqlalchemy import Column, Integer, String, DateTime, Enum as SQLEnum, text ,ForeignKey
 from sqlalchemy.orm import DeclarativeBase
 
 
@@ -74,4 +74,51 @@ class Ticket(Base):
     final_answer: str = Column(
         String,
         nullable=True
+    )
+
+
+
+"""
+
+drafts
+
+├── ticket_id
+│   └── Primary key + foreign key → tickets.ticket_id
+│
+├── generated_answer
+│   └── Nullable
+│
+├── evidence
+│   └── Evidence / citations used to generate the answer
+│
+├── validation_result
+│   └── Nullable, human-readable validation result
+│
+├── model_metadata
+│   └── Information about the model/generation process
+│
+└── failure_reason
+    └── Nullable, reason for generation failure
+
+
+
+"""
+
+class Draft(Base):
+    __tablename__ = "drafts"
+
+    generated_answer: str = Column(String, nullable=True)
+
+    evidence: str = Column(String, nullable=False)
+
+    validation_result: str = Column(String, nullable=True)
+
+    model_metadata: str = Column(String, nullable=False)
+
+    failure_reason: str = Column(String, nullable=True)
+
+    ticket_id = Column(
+        Integer,
+        ForeignKey("tickets.ticket_id"),
+        primary_key=True
     )
