@@ -25,6 +25,7 @@ tickets
 """
 
 from enum import Enum
+from json import tool
 from sqlalchemy import Column, Integer, String, DateTime, Enum as SQLEnum, text ,ForeignKey
 from sqlalchemy.orm import DeclarativeBase
 
@@ -121,4 +122,64 @@ class Draft(Base):
         Integer,
         ForeignKey("tickets.ticket_id"),
         primary_key=True
+    )
+
+"""
+audit
+
+├── audit_id
+│   └── Primary key, auto-increment integer
+│
+├── ticket_id
+│   └── Foreign key → tickets.ticket_id
+│
+├── event
+│   └── Free-form string describing what happened
+│
+├── component
+│   └── Free-form string identifying the component/tool
+│
+├── result
+│   └── Free-form string describing the outcome
+│
+└── created_at
+    └── Timestamp of when the event occurred
+
+
+"""
+
+class Audit(Base):
+    __tablename__ = "audit"
+
+    audit_id: int = Column(
+        Integer,
+        primary_key=True,
+        autoincrement=True
+    )
+
+    ticket_id: int = Column(
+        Integer,
+        ForeignKey("tickets.ticket_id"),
+        nullable=False
+    )
+
+    event: str = Column(
+        String,
+        nullable=False
+    )
+
+    component: str = Column(
+        String,
+        nullable=False
+    )
+
+    result: str = Column(
+        String,
+        nullable=False
+    )
+
+    created_at = Column(
+        DateTime,
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP")
     )
