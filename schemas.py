@@ -4,7 +4,17 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+#============================================================
+# schema for incoming request 
+#============================================================
 
+class CreateTicketRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    user_id: int = Field(..., description="The ID of the user making the request")
+    message: str = Field(..., min_length=1, description="The message from the user")
+
+    
 # ============================================================
 # Ticket Lifecycle
 # ============================================================
@@ -41,6 +51,7 @@ class Ticket(BaseModel):
 # ============================================================
 # Integrity Gate
 # ============================================================
+
 
 
 class IntegrityDecision(str, Enum):
