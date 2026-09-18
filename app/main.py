@@ -5,6 +5,11 @@ from database import get_db
 from schemas import CreateTicketRequest, ClientResponse
 from app.ticket_service import create_ticket as create_ticket_service
 
+from app.ticket_service import (
+    create_ticket as create_ticket_service,
+    get_tickets as get_tickets_service,
+)
+
 app = FastAPI()
 
 
@@ -30,3 +35,17 @@ def create_ticket(
         status=new_ticket.status,
         message="Ticket created successfully",
     )
+
+
+
+
+
+
+
+
+
+
+@app.get("/tickets")
+def get_tickets(db: Session = Depends(get_db)):
+    tickets = get_tickets_service(db=db)
+    return tickets

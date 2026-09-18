@@ -14,3 +14,10 @@ def create_ticket(db: Session, user_id: int, message: str) -> Ticket:
 
     return new_ticket
 
+
+from sqlalchemy.orm import Session
+from models import Ticket
+
+
+def get_tickets(db: Session):
+    return db.query(Ticket).all()
