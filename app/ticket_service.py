@@ -1,9 +1,16 @@
 from sqlalchemy.orm import Session
+from models import Ticket
 
-def create_ticket(db: Session, ticket_data: dict):
-    from models import Ticket  # Import the Ticket model here to avoid circular imports
-    new_ticket = Ticket(**ticket_data)
+
+def create_ticket(db: Session, user_id: int, message: str) -> Ticket:
+    new_ticket = Ticket(
+        user_id=str(user_id),
+        user_message=message,
+    )
+
     db.add(new_ticket)
     db.commit()
     db.refresh(new_ticket)
+
     return new_ticket
+
