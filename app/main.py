@@ -1,6 +1,12 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
+from sqlalchemy.orm import Session
+
+from database import get_db
+from schemas import CreateTicketRequest, ClientResponse
+from app.ticket_service import create_ticket as create_ticket_service
 
 app = FastAPI()
+
 
 
 @app.get("/health")
@@ -8,13 +14,19 @@ def health_check():
     return {"status": "ok"}
 
 
-"""
-the request json should contain the user id and message 
+@app.post("/tickets", response_model=ClientResponse)
+def create_ticket(
+    ticket_data: CreateTicketRequest,
+    db: Session = Depends(get_db),
+):
+    new_ticket = create_ticket_service(
+        db=db,
+        user_id=ticket_data.user_id,
+        message=ticket_data.message,
+    )
 
-the pydantic schema should validate 2 things the user id to be numeric and the user message to be string
-
-in another layers or in another parts we will write our business logic here we will only do the implementation part 
-
-user id should be numeric and user message should be string
-
-"""
+    return ClientResponse(
+        ticket_id=str(new_ticket.ticket_id),
+        status=new_ticket.status,
+        message="Ticket created successfully",
+    )

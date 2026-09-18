@@ -1,4 +1,4 @@
-from sqlalchemy import Session
+from sqlalchemy.orm import Session
 
 def create_ticket(db: Session, ticket_data: dict):
     from models import Ticket  # Import the Ticket model here to avoid circular imports
