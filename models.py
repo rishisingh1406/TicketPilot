@@ -37,9 +37,9 @@ class Base(DeclarativeBase):
 class TicketStatus(str, Enum):
     CREATED = "CREATED"
     PROCESSING = "PROCESSING"
+    ESCALATED_TO_SUPPORT = "ESCALATED_TO_SUPPORT"
     RESOLVED = "RESOLVED"
-    ESCALATED = "ESCALATED"
-
+    
 
 class Ticket(Base):
     __tablename__ = "tickets"

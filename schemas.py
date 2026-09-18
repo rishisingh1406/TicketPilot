@@ -26,6 +26,11 @@ class TicketStatus(str, Enum):
     ESCALATED_TO_SUPPORT = "ESCALATED_TO_SUPPORT"
     RESOLVED = "RESOLVED"
 
+class TicketDecisionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    decision: TicketStatus
+    
 
 class Ticket(BaseModel):
     """

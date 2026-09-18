@@ -8,7 +8,16 @@ from app.ticket_service import create_ticket as create_ticket_service
 from app.ticket_service import (
     create_ticket as create_ticket_service,
     get_tickets as get_tickets_service,
+    update_ticket_decision,
 )
+
+from schemas import (
+    CreateTicketRequest,
+    ClientResponse,
+    TicketDecisionRequest,
+)
+
+from fastapi import FastAPI, Depends, HTTPException
 
 app = FastAPI()
 
@@ -38,14 +47,32 @@ def create_ticket(
 
 
 
-
-
-
-
-
-
-
 @app.get("/tickets")
 def get_tickets(db: Session = Depends(get_db)):
     tickets = get_tickets_service(db=db)
     return tickets
+
+
+@app.post("/tickets/{ticket_id}/decision")
+def make_ticket_decision(
+    ticket_id: int,
+    decision_data: TicketDecisionRequest,
+    db: Session = Depends(get_db),
+):
+    ticket = update_ticket_decision(
+        db=db,
+        ticket_id=ticket_id,
+        decision=decision_data.decision,
+    )
+
+    if ticket is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Ticket not found",
+        )
+
+    return ClientResponse(
+        ticket_id=str(ticket.ticket_id),
+        status=ticket.status,
+        message="Ticket decision updated successfully",
+    )
