@@ -18,9 +18,18 @@ from schemas import (
 )
 
 from fastapi import FastAPI, Depends, HTTPException
+from app.logging_config import configure_logging
+
+import logging
+import uuid
+
+from fastapi import Request
+
+configure_logging()
 
 app = FastAPI()
 
+logger = logging.getLogger(__name__)
 
 
 @app.get("/health")
@@ -76,3 +85,26 @@ def make_ticket_decision(
         status=ticket.status,
         message="Ticket decision updated successfully",
     )
+
+
+@app.middleware("http")
+async def request_logging_middleware(request: Request, call_next):
+    request_id = str(uuid.uuid4())
+
+    request.state.request_id = request_id
+
+    response = await call_next(request)
+
+    logger.info(
+        "request completed",
+        extra={
+            "request_id": request_id,
+            "method": request.method,
+            "path": request.url.path,
+            "status_code": response.status_code,
+        },
+    )
+
+    response.headers["X-Request-ID"] = request_id
+
+    return response
