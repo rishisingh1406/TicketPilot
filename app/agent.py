@@ -112,6 +112,11 @@ END LOOP
 """
 
 
+
+
+from pyexpat.errors import messages
+
+
 class Agent:
 
     def __init__(
@@ -122,6 +127,7 @@ class Agent:
         conversation_history,
         previous_tool_calls,
         previous_tool_results,
+        llm
     ):
         self.system_prompt = system_prompt
         self.user_query = user_query
@@ -134,6 +140,8 @@ class Agent:
         self.tool_calls = 0
         self.max_iterations = 5
         self.max_tool_calls = 5
+        self.llm = llm
+
 
     def run(self):
 
@@ -179,6 +187,80 @@ class Agent:
                 return self.escalate(response)
 
         # Maximum iteration limit reached
-        raise RuntimeError("Maximum agent iteration limit reached")
+        raise RuntimeError("Maximum iteration limit reached")
+
+    def generate_response(self):
+
+        messages = [
+            {
+                "role": "system",
+                "content": self.system_prompt,
+            }
+        ]
+
+        # Add previous conversation
+        messages.extend(self.conversation_history)
+
+        # Add current user query
+        messages.append(
+            {
+                "role": "user",
+                "content": self.user_query,
+            }
+        )
+
+        # Add retrieved information as isolated context
+        if self.retrieved_chunks:
+            retrieved_context = "\n\n".join(
+                f"<retrieved_chunk>\n{chunk}\n</retrieved_chunk>"
+                for chunk in self.retrieved_chunks
+            )
+
+            messages.append(
+                {
+                    "role": "user",
+                    "content": (
+                        "Retrieved information:\n"
+                        "<retrieved_context>\n"
+                        f"{retrieved_context}\n"
+                        "</retrieved_context>"
+                    ),
+                }
+            )
+
+        # Add previous tool calls and results as isolated context
+        if self.previous_tool_calls:
+            tool_history = []
+
+            for tool_call, tool_result in zip(
+                self.previous_tool_calls,
+                self.previous_tool_results,
+            ):
+                tool_history.append(
+                    f"<tool_call>\n{tool_call}\n</tool_call>"
+                )
+                tool_history.append(
+                    f"<tool_result>\n{tool_result}\n</tool_result>"
+                )
+
+            messages.append(
+                {
+                    "role": "user",
+                    "content": (
+                        "Previous tool execution history:\n"
+                        "<tool_history>\n"
+                        f"{chr(10).join(tool_history)}\n"
+                        "</tool_history>"
+                    ),
+                }
+            )
+
+        # Call the LLM
+        response = self.call_llm(messages)
+
+        return response
+
+    def call_llm(self, messages):
+        return self.llm.generate(messages)
 
     
