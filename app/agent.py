@@ -1,15 +1,17 @@
-
 """
 INITIALIZE AGENT
 
     Receive:
+
         - system prompt / agent instructions
         - user query
         - initially retrieved chunks
         - conversation history
         - previous tool calls and results
+        - tool handlers
 
     Set:
+
         iteration = 1
         tool_calls = 0
         max_iterations = 5
@@ -18,103 +20,59 @@ INITIALIZE AGENT
 
 WHILE iteration <= max_iterations:
 
-    ┌─────────────────────────────────────┐
-    │ Send current agent state to the LLM │
-    └──────────────────┬──────────────────┘
-                       ↓
+    Send current agent state to the LLM
 
     LLM returns structured AgentResponse
-                       ↓
 
     Validate AgentResponse against schema
-                       │
-              ┌────────┴────────┐
-              │                 │
-            VALID             INVALID
-              │                 │
-              │            Retry LLM once
-              │                 ↓
-              │            Validate again
-              │                 │
-              │          ┌──────┴──────┐
-              │          │             │
-              │        VALID         INVALID
-              │          │             │
-              │          │       Fail execution
-              │          │       and raise error
-              │          │
-              └──────────┴───────────────
-
+        VALID → continue
+        INVALID → retry LLM once → validate again
+            VALID → continue
+            INVALID → fail execution
 
     IF AgentResponse.action == TOOL_CALL:
 
         Check whether requested tool is allowed
 
-            IF tool is not allowed:
-                Fail execution
-                and raise error
-
         Check tool-call limit
 
-            IF tool_calls >= max_tool_calls:
-                Terminate agent execution
-                Do not execute another tool call
+        Validate tool_input against the
+        schema belonging to that tool
 
-            ELSE:
-                Execute requested tool
+        Execute requested tool
 
-                Store:
-                    - tool name
-                    - tool input
-                    - tool result
+        Store:
+            - tool name
+            - tool input
+            - tool result
 
-                tool_calls = tool_calls + 1
+        Increment tool-call count
 
-
-                IF iteration == max_iterations:
-                    Terminate agent execution
-
-                    # The tool from iteration 5 has already
-                    # been executed and its result stored.
-                    # Do NOT send the result back to the LLM.
-                    # Do NOT start iteration 6.
-
-                ELSE:
-                    iteration = iteration + 1
-
-                    Continue loop
-                    with updated agent state
-
+        Continue to next iteration
 
     IF AgentResponse.action == ANSWER:
 
-        Validate/store final answer
-        Return answer to user
-
-        Terminate agent execution
-
+        Return answer
 
     IF AgentResponse.action == ESCALATE:
 
-        Collect:
-            - conversation history
-            - relevant agent execution history
-            - relevant tool calls/results
-            - escalation information
-
-        Send case to support team
-
-        Terminate agent execution
-
+        Send case to support
 
 END LOOP
-
 """
 
 
+import json
+from typing import Any, Callable
 
+from pydantic import BaseModel, ValidationError
 
-from pyexpat.errors import messages
+from schemas import (
+    AgentAction,
+    AgentResponse,
+    AllowedTool,
+    TOOL_INPUT_MODELS,
+)
 
 
 class Agent:
@@ -127,7 +85,8 @@ class Agent:
         conversation_history,
         previous_tool_calls,
         previous_tool_results,
-        llm
+        llm,
+        tool_handlers: dict[AllowedTool, Callable] | None = None,
     ):
         self.system_prompt = system_prompt
         self.user_query = user_query
@@ -138,28 +97,55 @@ class Agent:
 
         self.iteration = 1
         self.tool_calls = 0
+
         self.max_iterations = 5
         self.max_tool_calls = 5
+
         self.llm = llm
 
+        # Tool implementations are injected into the agent.
+        #
+        # Example:
+        #
+        # {
+        #     AllowedTool.SEARCH_KNOWLEDGE: search_knowledge,
+        #     AllowedTool.GET_ACCOUNT: get_account,
+        #     AllowedTool.UPDATE_TICKET_STATUS: update_ticket_status,
+        # }
+        #
+        self.tool_handlers = tool_handlers or {}
+
+    # ============================================================
+    # Agent Loop
+    # ============================================================
 
     def run(self):
 
         while self.iteration <= self.max_iterations:
 
+            # ----------------------------------------------------
             # Generate LLM response
+            # ----------------------------------------------------
+
             response = self.generate_response()
 
-            # Decide what the LLM wants to do
-            if response.action == "TOOL_CALL":
+            # ----------------------------------------------------
+            # TOOL_CALL
+            # ----------------------------------------------------
+
+            if response.action == AgentAction.TOOL_CALL:
 
                 # Check tool-call limit
                 if self.tool_calls >= self.max_tool_calls:
-                    raise RuntimeError("Maximum tool-call limit reached")
+                    raise RuntimeError(
+                        "Maximum tool-call limit reached"
+                    )
 
                 # Check whether the requested tool is allowed
                 if not self.is_tool_allowed(response.tool):
-                    raise RuntimeError("Requested tool is not allowed")
+                    raise RuntimeError(
+                        "Requested tool is not allowed"
+                    )
 
                 # Execute tool
                 tool_result = self.call_tool(response)
@@ -171,25 +157,148 @@ class Agent:
                 # Increment tool-call count
                 self.tool_calls += 1
 
-                # Current iteration is complete.
-                # If this was iteration 5, the while condition
-                # will prevent another LLM call.
+                # ------------------------------------------------
+                # Final iteration
+                # ------------------------------------------------
+
+                if self.iteration == self.max_iterations:
+
+                    # The tool from the final iteration has
+                    # already been executed and stored.
+                    #
+                    # Do NOT make another LLM call.
+                    #
+                    # The exact terminal behavior after this point
+                    # is still a separate orchestration decision.
+
+                    return tool_result
+
+                # ------------------------------------------------
+                # Continue agent loop
+                # ------------------------------------------------
+
                 self.iteration += 1
 
-            elif response.action == "ANSWER":
+            # ----------------------------------------------------
+            # ANSWER
+            # ----------------------------------------------------
 
-                # Return answer to user
+            elif response.action == AgentAction.ANSWER:
+
                 return response
 
-            elif response.action == "ESCALATE":
+            # ----------------------------------------------------
+            # ESCALATE
+            # ----------------------------------------------------
 
-                # Send conversation/execution context to support
+            elif response.action == AgentAction.ESCALATE:
+
                 return self.escalate(response)
 
+        # --------------------------------------------------------
         # Maximum iteration limit reached
-        raise RuntimeError("Maximum iteration limit reached")
+        # --------------------------------------------------------
+
+        raise RuntimeError(
+            "Maximum iteration limit reached"
+        )
+
+    # ============================================================
+    # Tool Authorization
+    # ============================================================
+
+    def is_tool_allowed(self, tool: AllowedTool | None) -> bool:
+        """
+        Check whether the requested tool is both:
+
+        1. A known tool defined by the schema.
+        2. Actually registered with the agent.
+        """
+
+        if tool is None:
+            return False
+
+        if tool not in TOOL_INPUT_MODELS:
+            return False
+
+        if tool not in self.tool_handlers:
+            return False
+
+        return True
+
+    # ============================================================
+    # Tool Dispatch
+    # ============================================================
+
+    def call_tool(self, response: AgentResponse) -> Any:
+        """
+        Validate the tool input and dispatch the request
+        to the registered tool handler.
+        """
+
+        if response.tool is None:
+            raise RuntimeError(
+                "Cannot execute tool call without a tool"
+            )
+
+        if response.tool_input is None:
+            raise RuntimeError(
+                "Cannot execute tool call without tool_input"
+            )
+
+        # --------------------------------------------------------
+        # Find the input schema belonging to the requested tool
+        # --------------------------------------------------------
+
+        input_model = TOOL_INPUT_MODELS.get(response.tool)
+
+        if input_model is None:
+            raise RuntimeError(
+                f"No input schema registered for tool: "
+                f"{response.tool}"
+            )
+
+        # --------------------------------------------------------
+        # Validate tool input
+        # --------------------------------------------------------
+
+        try:
+            validated_input = input_model.model_validate(
+                response.tool_input
+            )
+
+        except ValidationError as error:
+            raise RuntimeError(
+                f"Invalid input for tool {response.tool}"
+            ) from error
+
+        # --------------------------------------------------------
+        # Find the actual tool implementation
+        # --------------------------------------------------------
+
+        tool_handler = self.tool_handlers.get(response.tool)
+
+        if tool_handler is None:
+            raise RuntimeError(
+                f"No handler registered for tool: "
+                f"{response.tool}"
+            )
+
+        # --------------------------------------------------------
+        # Execute tool
+        # --------------------------------------------------------
+
+        return tool_handler(validated_input)
+
+    # ============================================================
+    # LLM Response Generation
+    # ============================================================
 
     def generate_response(self):
+
+        # ========================================================
+        # Build messages
+        # ========================================================
 
         messages = [
             {
@@ -198,10 +307,16 @@ class Agent:
             }
         ]
 
-        # Add previous conversation
+        # --------------------------------------------------------
+        # Conversation history
+        # --------------------------------------------------------
+
         messages.extend(self.conversation_history)
 
-        # Add current user query
+        # --------------------------------------------------------
+        # Current user query
+        # --------------------------------------------------------
+
         messages.append(
             {
                 "role": "user",
@@ -209,10 +324,18 @@ class Agent:
             }
         )
 
-        # Add retrieved information as isolated context
+        # ========================================================
+        # Add initially retrieved chunks
+        # ========================================================
+
         if self.retrieved_chunks:
+
             retrieved_context = "\n\n".join(
-                f"<retrieved_chunk>\n{chunk}\n</retrieved_chunk>"
+                (
+                    "<retrieved_chunk>\n"
+                    f"{self.serialize_for_prompt(chunk)}\n"
+                    "</retrieved_chunk>"
+                )
                 for chunk in self.retrieved_chunks
             )
 
@@ -228,19 +351,33 @@ class Agent:
                 }
             )
 
-        # Add previous tool calls and results as isolated context
+        # ========================================================
+        # Add previous tool execution history
+        # ========================================================
+
         if self.previous_tool_calls:
+
             tool_history = []
 
             for tool_call, tool_result in zip(
                 self.previous_tool_calls,
                 self.previous_tool_results,
             ):
+
                 tool_history.append(
-                    f"<tool_call>\n{tool_call}\n</tool_call>"
+                    (
+                        "<tool_call>\n"
+                        f"{self.serialize_for_prompt(tool_call)}\n"
+                        "</tool_call>"
+                    )
                 )
+
                 tool_history.append(
-                    f"<tool_result>\n{tool_result}\n</tool_result>"
+                    (
+                        "<tool_result>\n"
+                        f"{self.serialize_for_prompt(tool_result)}\n"
+                        "</tool_result>"
+                    )
                 )
 
             messages.append(
@@ -255,12 +392,79 @@ class Agent:
                 }
             )
 
-        # Call the LLM
-        response = self.call_llm(messages)
+        # ========================================================
+        # First LLM attempt
+        # ========================================================
 
-        return response
+        try:
+
+            response = self.call_llm(messages)
+
+            return response
+
+        except (json.JSONDecodeError, ValidationError):
+
+            # ====================================================
+            # One validation retry
+            # ====================================================
+
+            try:
+
+                response = self.call_llm(messages)
+
+                return response
+
+            except (
+                json.JSONDecodeError,
+                ValidationError,
+            ) as second_error:
+
+                raise RuntimeError(
+                    "LLM returned invalid structured output "
+                    "after one retry"
+                ) from second_error
+
+    # ============================================================
+    # Serialize Data For Prompt
+    # ============================================================
+
+    @staticmethod
+    def serialize_for_prompt(value: Any) -> str:
+        """
+        Convert structured objects into predictable text
+        before inserting them into the prompt.
+        """
+
+        if isinstance(value, BaseModel):
+
+            return value.model_dump_json()
+
+        try:
+
+            return json.dumps(
+                value,
+                default=str,
+            )
+
+        except (TypeError, ValueError):
+
+            return str(value)
+
+    # ============================================================
+    # LLM Call
+    # ============================================================
 
     def call_llm(self, messages):
+
         return self.llm.generate(messages)
 
-    
+    # ============================================================
+    # Escalation
+    # ============================================================
+
+    def escalate(self, response: AgentResponse):
+
+        # Escalation implementation will be connected to the
+        # support handoff/persistence layer.
+
+        return response

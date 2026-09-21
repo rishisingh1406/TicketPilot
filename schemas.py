@@ -4,17 +4,27 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-#============================================================
-# schema for incoming request 
-#============================================================
+
+# ============================================================
+# Schema for incoming request
+# ============================================================
+
 
 class CreateTicketRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    user_id: int = Field(..., description="The ID of the user making the request")
-    message: str = Field(..., min_length=1, description="The message from the user")
+    user_id: int = Field(
+        ...,
+        description="The ID of the user making the request",
+    )
 
-    
+    message: str = Field(
+        ...,
+        min_length=1,
+        description="The message from the user",
+    )
+
+
 # ============================================================
 # Ticket Lifecycle
 # ============================================================
@@ -26,11 +36,12 @@ class TicketStatus(str, Enum):
     ESCALATED_TO_SUPPORT = "ESCALATED_TO_SUPPORT"
     RESOLVED = "RESOLVED"
 
+
 class TicketDecisionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     decision: TicketStatus
-    
+
 
 class Ticket(BaseModel):
     """
@@ -58,7 +69,6 @@ class Ticket(BaseModel):
 # ============================================================
 
 
-
 class IntegrityDecision(str, Enum):
     ALLOW = "ALLOW"
     BLOCK = "BLOCK"
@@ -78,11 +88,16 @@ class IntegrityCheckResult(BaseModel):
 
     @model_validator(mode="after")
     def validate_reason(self) -> "IntegrityCheckResult":
+
         if self.decision == IntegrityDecision.BLOCK and not self.reason:
-            raise ValueError("reason is required when decision is BLOCK")
+            raise ValueError(
+                "reason is required when decision is BLOCK"
+            )
 
         if self.decision == IntegrityDecision.ALLOW and self.reason:
-            raise ValueError("reason must be null when decision is ALLOW")
+            raise ValueError(
+                "reason must be null when decision is ALLOW"
+            )
 
         return self
 
@@ -110,8 +125,11 @@ class HandleabilityResult(BaseModel):
 
     @model_validator(mode="after")
     def validate_reason(self) -> "HandleabilityResult":
+
         if self.decision == Handleability.SUPPORT and not self.reason:
-            raise ValueError("reason is required when decision is SUPPORT")
+            raise ValueError(
+                "reason is required when decision is SUPPORT"
+            )
 
         return self
 
@@ -130,7 +148,6 @@ class RetrievedChunk(BaseModel):
 
     chunk_id: str = Field(min_length=1)
     content: str = Field(min_length=1)
-
     source: str = Field(min_length=1)
 
     # Metadata used to distinguish newer/older manual content.
@@ -161,7 +178,70 @@ class AgentAction(str, Enum):
 
 
 class AllowedTool(str, Enum):
-    RAG = "RAG"
+    SEARCH_KNOWLEDGE = "SEARCH_KNOWLEDGE"
+    GET_ACCOUNT = "GET_ACCOUNT"
+    UPDATE_TICKET_STATUS = "UPDATE_TICKET_STATUS"
+
+
+# ============================================================
+# Tool Input Schemas
+# ============================================================
+
+
+class SearchKnowledgeInput(BaseModel):
+    """
+    Input contract for the SEARCH_KNOWLEDGE tool.
+
+    The LLM provides the search query.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field(
+        min_length=1,
+        description="The knowledge-base search query",
+    )
+
+
+class GetAccountInput(BaseModel):
+    """
+    Input contract for the GET_ACCOUNT tool.
+
+    No user ID is accepted from the LLM.
+    The application owns the trusted user context.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class UpdateTicketStatusInput(BaseModel):
+    """
+    Input contract for the UPDATE_TICKET_STATUS tool.
+
+    The LLM can request the desired status.
+    The application owns the trusted ticket context.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    status: TicketStatus
+
+
+# ============================================================
+# Tool → Input Schema Mapping
+# ============================================================
+
+
+TOOL_INPUT_MODELS = {
+    AllowedTool.SEARCH_KNOWLEDGE: SearchKnowledgeInput,
+    AllowedTool.GET_ACCOUNT: GetAccountInput,
+    AllowedTool.UPDATE_TICKET_STATUS: UpdateTicketStatusInput,
+}
+
+
+# ============================================================
+# Agent Response
+# ============================================================
 
 
 class AgentResponse(BaseModel):
@@ -177,9 +257,12 @@ class AgentResponse(BaseModel):
     action: AgentAction
 
     tool: AllowedTool | None = None
-    tool_input: str | None = None
+
+    # Structured tool arguments.
+    tool_input: dict[str, Any] | None = None
 
     user_message: str | None = None
+
     support_message: str | None = None
 
     @model_validator(mode="after")
@@ -188,14 +271,15 @@ class AgentResponse(BaseModel):
         # ----------------------------------------------------
         # TOOL_CALL
         # ----------------------------------------------------
+
         if self.action == AgentAction.TOOL_CALL:
 
-            if self.tool != AllowedTool.RAG:
+            if self.tool is None:
                 raise ValueError(
-                    "TOOL_CALL requires tool to be RAG"
+                    "TOOL_CALL requires a tool"
                 )
 
-            if not self.tool_input:
+            if self.tool_input is None:
                 raise ValueError(
                     "TOOL_CALL requires tool_input"
                 )
@@ -213,6 +297,7 @@ class AgentResponse(BaseModel):
         # ----------------------------------------------------
         # ANSWER
         # ----------------------------------------------------
+
         elif self.action == AgentAction.ANSWER:
 
             if self.tool is not None:
@@ -238,6 +323,7 @@ class AgentResponse(BaseModel):
         # ----------------------------------------------------
         # ESCALATE
         # ----------------------------------------------------
+
         elif self.action == AgentAction.ESCALATE:
 
             if self.tool is not None:
@@ -284,6 +370,7 @@ class AnswerValidationResult(BaseModel):
 
     @model_validator(mode="after")
     def validate_reason(self) -> "AnswerValidationResult":
+
         if not self.valid and not self.reason:
             raise ValueError(
                 "reason is required when answer is invalid"
@@ -312,9 +399,7 @@ class SupportHandoff(BaseModel):
 
     ticket_id: str = Field(min_length=1)
     user_id: str = Field(min_length=1)
-
     original_user_message: str = Field(min_length=1)
-
     support_message: str = Field(min_length=1)
 
 
@@ -332,13 +417,9 @@ class TicketResolution(BaseModel):
 
     ticket_id: str = Field(min_length=1)
     user_id: str = Field(min_length=1)
-
     original_user_message: str = Field(min_length=1)
-
     final_answer: str = Field(min_length=1)
-
     status: TicketStatus
-
     resolved_at: datetime
 
 
@@ -381,7 +462,5 @@ class ClientResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     ticket_id: str = Field(min_length=1)
-
     status: TicketStatus
-
     message: str = Field(min_length=1)
