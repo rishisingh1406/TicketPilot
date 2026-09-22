@@ -464,3 +464,9 @@ class ClientResponse(BaseModel):
     ticket_id: str = Field(min_length=1)
     status: TicketStatus
     message: str = Field(min_length=1)
+
+
+"""
+i think we should determine the importantance by finding the similariy like the similar search kind og thing
+
+"""

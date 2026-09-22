@@ -25,10 +25,20 @@ tickets
 """
 
 from enum import Enum
-from json import tool
-from sqlalchemy import Column, Integer, String, DateTime, Enum as SQLEnum, text ,ForeignKey
-from sqlalchemy.orm import DeclarativeBase
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Enum as SQLEnum,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    text,
+)
 
+from sqlalchemy.orm import DeclarativeBase
 
 class Base(DeclarativeBase):
     pass
@@ -175,6 +185,48 @@ class Audit(Base):
 
     result: str = Column(
         String,
+        nullable=False
+    )
+
+    created_at = Column(
+        DateTime,
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP")
+    )
+
+
+class KnowledgeChunk(Base):
+    __tablename__ = "knowledge_chunks"
+
+    chunk_id: int = Column(
+        Integer,
+        primary_key=True,
+        autoincrement=True
+    )
+
+    content: str = Column(
+        Text,
+        nullable=False
+    )
+
+    source: str = Column(
+        String,
+        nullable=False
+    )
+
+    timestamp = Column(
+        DateTime,
+        nullable=True
+    )
+
+    is_current: bool = Column(
+        Boolean,
+        nullable=False,
+        default=True
+    )
+
+    embedding = Column(
+        Vector(384),
         nullable=False
     )
 
