@@ -153,7 +153,7 @@ class RetrievedChunk(BaseModel):
     # Metadata used to distinguish newer/older manual content.
     timestamp: datetime | None = None
     is_current: bool | None = None
-
+    distance: float
 
 class RAGResult(BaseModel):
     """

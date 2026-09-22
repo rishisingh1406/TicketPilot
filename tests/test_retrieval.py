@@ -3,20 +3,17 @@ from app.retrieval import KnowledgeRetriever
 from database import SessionLocal
 
 
-def test_retrieve_relevant_chunks():
-    print("\nSTEP 1: Creating embedding model", flush=True)
-    embedding_model = EmbeddingModel()
-
-    print("STEP 2: Creating retriever", flush=True)
+def test_retrieve_relevant_chunks(embedding_model):
+    print("\nSTEP 1: Creating retriever", flush=True)
     retriever = KnowledgeRetriever(embedding_model)
 
     query = "I forgot my password. How can I reset it?"
 
-    print("STEP 3: Creating database session", flush=True)
+    print("STEP 2: Creating database session", flush=True)
     db = SessionLocal()
 
     try:
-        print("STEP 4: Calling retriever", flush=True)
+        print("STEP 3: Calling retriever", flush=True)
 
         results = retriever.retrieve_relevant_chunks(
             db=db,
@@ -24,7 +21,7 @@ def test_retrieve_relevant_chunks():
             top_k=3,
         )
 
-        print("STEP 5: Retriever returned", flush=True)
+        print("STEP 4: Retriever returned", flush=True)
 
         assert results
 
@@ -40,7 +37,7 @@ def test_retrieve_relevant_chunks():
         assert distance >= 0
 
     finally:
-        print("STEP 6: Closing database", flush=True)
+        print("STEP 5: Closing database", flush=True)
         db.close()
 
 
