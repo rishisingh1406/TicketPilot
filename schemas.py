@@ -265,6 +265,8 @@ class AgentResponse(BaseModel):
 
     support_message: str | None = None
 
+    retrieved_context: RAGResult | None = None
+
     @model_validator(mode="after")
     def validate_action_contract(self) -> "AgentResponse":
 

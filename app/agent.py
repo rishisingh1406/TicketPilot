@@ -9,6 +9,8 @@ INITIALIZE AGENT
         - conversation history
         - previous tool calls and results
         - tool handlers
+        - database session
+        - knowledge retriever
 
     Set:
 
@@ -25,9 +27,13 @@ WHILE iteration <= max_iterations:
     LLM returns structured AgentResponse
 
     Validate AgentResponse against schema
+
         VALID → continue
+
         INVALID → retry LLM once → validate again
+
             VALID → continue
+
             INVALID → fail execution
 
     IF AgentResponse.action == TOOL_CALL:
@@ -42,6 +48,7 @@ WHILE iteration <= max_iterations:
         Execute requested tool
 
         Store:
+
             - tool name
             - tool input
             - tool result
@@ -61,18 +68,63 @@ WHILE iteration <= max_iterations:
 END LOOP
 """
 
-
 import json
 from typing import Any, Callable
 
 from pydantic import BaseModel, ValidationError
+from sqlalchemy.orm import Session
 
+from app.retrieval import KnowledgeRetriever
 from schemas import (
     AgentAction,
     AgentResponse,
     AllowedTool,
+    RAGResult,
+    RetrievedChunk,
+    SearchKnowledgeInput,
     TOOL_INPUT_MODELS,
 )
+
+
+# ============================================================
+# SEARCH_KNOWLEDGE tool
+# ============================================================
+
+
+def search_knowledge(
+    db: Session,
+    tool_input: SearchKnowledgeInput,
+    retriever: KnowledgeRetriever,
+) -> RAGResult:
+    """
+    Search the approved knowledge base using semantic retrieval.
+
+    The LLM provides only the search query.
+    Retrieval policy and database access remain application-owned.
+    """
+
+    results = retriever.retrieve_relevant_chunks(
+        db=db,
+        query=tool_input.query,
+        top_k=5,
+    )
+
+    chunks = [
+        RetrievedChunk(
+            chunk_id=str(chunk.chunk_id),
+            content=chunk.content,
+            source=chunk.source,
+            timestamp=chunk.timestamp,
+            is_current=chunk.is_current,
+            distance=float(distance),
+        )
+        for chunk, distance in results
+    ]
+
+    return RAGResult(
+        query=tool_input.query,
+        chunks=chunks,
+    )
 
 
 class Agent:
@@ -86,6 +138,8 @@ class Agent:
         previous_tool_calls,
         previous_tool_results,
         llm,
+        db: Session,
+        retriever: KnowledgeRetriever,
         tool_handlers: dict[AllowedTool, Callable] | None = None,
     ):
         self.system_prompt = system_prompt
@@ -102,6 +156,12 @@ class Agent:
         self.max_tool_calls = 5
 
         self.llm = llm
+
+        # Database session used by tools that require persistence.
+        self.db = db
+
+        # Retrieval dependency used by SEARCH_KNOWLEDGE.
+        self.retriever = retriever
 
         # Tool implementations are injected into the agent.
         #
@@ -184,7 +244,6 @@ class Agent:
             # ----------------------------------------------------
 
             elif response.action == AgentAction.ANSWER:
-
                 return response
 
             # ----------------------------------------------------
@@ -192,7 +251,6 @@ class Agent:
             # ----------------------------------------------------
 
             elif response.action == AgentAction.ESCALATE:
-
                 return self.escalate(response)
 
         # --------------------------------------------------------
@@ -207,7 +265,10 @@ class Agent:
     # Tool Authorization
     # ============================================================
 
-    def is_tool_allowed(self, tool: AllowedTool | None) -> bool:
+    def is_tool_allowed(
+        self,
+        tool: AllowedTool | None,
+    ) -> bool:
         """
         Check whether the requested tool is both:
 
@@ -230,7 +291,10 @@ class Agent:
     # Tool Dispatch
     # ============================================================
 
-    def call_tool(self, response: AgentResponse) -> Any:
+    def call_tool(
+        self,
+        response: AgentResponse,
+    ) -> Any:
         """
         Validate the tool input and dispatch the request
         to the registered tool handler.
@@ -285,7 +349,19 @@ class Agent:
             )
 
         # --------------------------------------------------------
-        # Execute tool
+        # Execute SEARCH_KNOWLEDGE
+        # --------------------------------------------------------
+
+        if response.tool == AllowedTool.SEARCH_KNOWLEDGE:
+
+            return tool_handler(
+                db=self.db,
+                tool_input=validated_input,
+                retriever=self.retriever,
+            )
+
+        # --------------------------------------------------------
+        # Execute other tools
         # --------------------------------------------------------
 
         return tool_handler(validated_input)
@@ -429,14 +505,15 @@ class Agent:
     # ============================================================
 
     @staticmethod
-    def serialize_for_prompt(value: Any) -> str:
+    def serialize_for_prompt(
+        value: Any,
+    ) -> str:
         """
         Convert structured objects into predictable text
         before inserting them into the prompt.
         """
 
         if isinstance(value, BaseModel):
-
             return value.model_dump_json()
 
         try:
@@ -455,16 +532,19 @@ class Agent:
     # ============================================================
 
     def call_llm(self, messages):
-
         return self.llm.generate(messages)
 
     # ============================================================
     # Escalation
     # ============================================================
 
-    def escalate(self, response: AgentResponse):
-
-        # Escalation implementation will be connected to the
-        # support handoff/persistence layer.
+    def escalate(
+        self,
+        response: AgentResponse,
+    ):
+        """
+        Escalation implementation will be connected to the
+        support handoff/persistence layer.
+        """
 
         return response

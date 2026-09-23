@@ -9,7 +9,6 @@ from schemas import (
     RetrievedChunk,
     TicketStatus,
 )
-
 from pydantic import ValidationError
 
 
@@ -39,6 +38,11 @@ def make_agent(
     previous_tool_results=None,
     tool_handlers=None,
 ):
+    # These are lightweight test dependencies.
+    # The tests do not need a real database or embedding model.
+    fake_db = object()
+    fake_retriever = object()
+
     return Agent(
         system_prompt="You are a support agent.",
         user_query="I was charged twice.",
@@ -47,6 +51,8 @@ def make_agent(
         previous_tool_calls=previous_tool_calls or [],
         previous_tool_results=previous_tool_results or [],
         llm=llm,
+        db=fake_db,
+        retriever=fake_retriever,
         tool_handlers=tool_handlers or {},
     )
 
@@ -55,13 +61,16 @@ def make_agent(
 # Prompt assembly
 # ---------------------------------------------------------
 
+
 def test_prompt_assembly_preserves_system_prompt():
-    llm = FakeLLM([
-        AgentResponse(
-            action=AgentAction.ANSWER,
-            user_message="You will receive help.",
-        )
-    ])
+    llm = FakeLLM(
+        [
+            AgentResponse(
+                action=AgentAction.ANSWER,
+                user_message="You will receive help.",
+            )
+        ]
+    )
 
     agent = make_agent(llm)
 
@@ -74,12 +83,14 @@ def test_prompt_assembly_preserves_system_prompt():
 
 
 def test_prompt_assembly_includes_user_query():
-    llm = FakeLLM([
-        AgentResponse(
-            action=AgentAction.ANSWER,
-            user_message="You will receive help.",
-        )
-    ])
+    llm = FakeLLM(
+        [
+            AgentResponse(
+                action=AgentAction.ANSWER,
+                user_message="You will receive help.",
+            )
+        ]
+    )
 
     agent = make_agent(llm)
 
@@ -99,14 +110,17 @@ def test_prompt_assembly_delimits_retrieved_chunks():
         chunk_id="chunk-1",
         content="Duplicate charges can be refunded.",
         source="billing_faq",
+        distance=0.20,
     )
 
-    llm = FakeLLM([
-        AgentResponse(
-            action=AgentAction.ANSWER,
-            user_message="The charge can be reviewed.",
-        )
-    ])
+    llm = FakeLLM(
+        [
+            AgentResponse(
+                action=AgentAction.ANSWER,
+                user_message="The charge can be reviewed.",
+            )
+        ]
+    )
 
     agent = make_agent(
         llm,
@@ -137,7 +151,7 @@ def test_prompt_assembly_delimits_tool_history():
         action=AgentAction.TOOL_CALL,
         tool=AllowedTool.SEARCH_KNOWLEDGE,
         tool_input={
-            "query": "duplicate billing"
+            "query": "duplicate billing",
         },
     )
 
@@ -148,16 +162,19 @@ def test_prompt_assembly_delimits_tool_history():
                 chunk_id="chunk-1",
                 content="Duplicate billing policy.",
                 source="billing_faq",
+                distance=0.20,
             )
         ],
     )
 
-    llm = FakeLLM([
-        AgentResponse(
-            action=AgentAction.ANSWER,
-            user_message="The issue can be reviewed.",
-        )
-    ])
+    llm = FakeLLM(
+        [
+            AgentResponse(
+                action=AgentAction.ANSWER,
+                user_message="The issue can be reviewed.",
+            )
+        ]
+    )
 
     agent = make_agent(
         llm,
@@ -192,11 +209,15 @@ def test_prompt_assembly_delimits_tool_history():
 # Tool dispatch
 # ---------------------------------------------------------
 
+
 def test_search_knowledge_dispatch():
     received = {}
 
-    def search_handler(tool_input):
+    def search_handler(db, tool_input, retriever):
+        received["db"] = db
         received["input"] = tool_input
+        received["retriever"] = retriever
+
         return "search-result"
 
     llm = FakeLLM([])
@@ -212,13 +233,15 @@ def test_search_knowledge_dispatch():
         action=AgentAction.TOOL_CALL,
         tool=AllowedTool.SEARCH_KNOWLEDGE,
         tool_input={
-            "query": "duplicate billing"
+            "query": "duplicate billing",
         },
     )
 
     result = agent.call_tool(response)
 
     assert result == "search-result"
+    assert received["db"] is agent.db
+    assert received["retriever"] is agent.retriever
     assert received["input"].query == "duplicate billing"
 
 
@@ -270,7 +293,7 @@ def test_update_ticket_status_dispatch():
         action=AgentAction.TOOL_CALL,
         tool=AllowedTool.UPDATE_TICKET_STATUS,
         tool_input={
-            "status": TicketStatus.RESOLVED.value
+            "status": TicketStatus.RESOLVED.value,
         },
     )
 
@@ -281,7 +304,7 @@ def test_update_ticket_status_dispatch():
 
 
 def test_invalid_tool_input_is_rejected():
-    def search_handler(tool_input):
+    def search_handler(db, tool_input, retriever):
         return "should-not-run"
 
     llm = FakeLLM([])
@@ -297,7 +320,7 @@ def test_invalid_tool_input_is_rejected():
         action=AgentAction.TOOL_CALL,
         tool=AllowedTool.SEARCH_KNOWLEDGE,
         tool_input={
-            "query": ""
+            "query": "",
         },
     )
 
@@ -314,7 +337,7 @@ def test_missing_tool_handler_is_rejected():
         action=AgentAction.TOOL_CALL,
         tool=AllowedTool.SEARCH_KNOWLEDGE,
         tool_input={
-            "query": "billing"
+            "query": "billing",
         },
     )
 
@@ -324,9 +347,12 @@ def test_missing_tool_handler_is_rejected():
     ):
         agent.call_tool(response)
 
+
 # ---------------------------------------------------------
 # Structured output retry
 # ---------------------------------------------------------
+
+
 def test_invalid_structured_output_retries_once():
     valid_response = AgentResponse(
         action=AgentAction.ANSWER,
@@ -357,6 +383,7 @@ def test_invalid_structured_output_retries_once():
     assert result == valid_response
     assert llm.calls == 2
 
+
 def test_invalid_structured_output_twice_fails():
     class AlwaysInvalidLLM:
         def __init__(self):
@@ -386,7 +413,7 @@ def test_invalid_structured_output_twice_fails():
 def test_agent_executes_tool_on_iteration_five_then_stops():
     calls = []
 
-    def search_handler(tool_input):
+    def search_handler(db, tool_input, retriever):
         calls.append(tool_input.query)
         return "final-tool-result"
 
@@ -394,17 +421,19 @@ def test_agent_executes_tool_on_iteration_five_then_stops():
         action=AgentAction.TOOL_CALL,
         tool=AllowedTool.SEARCH_KNOWLEDGE,
         tool_input={
-            "query": "billing"
+            "query": "billing",
         },
     )
 
-    llm = FakeLLM([
-        tool_response,
-        tool_response,
-        tool_response,
-        tool_response,
-        tool_response,
-    ])
+    llm = FakeLLM(
+        [
+            tool_response,
+            tool_response,
+            tool_response,
+            tool_response,
+            tool_response,
+        ]
+    )
 
     agent = make_agent(
         llm,
@@ -426,7 +455,7 @@ def test_agent_executes_tool_on_iteration_five_then_stops():
 def test_agent_stops_when_tool_call_limit_is_reached():
     calls = []
 
-    def search_handler(tool_input):
+    def search_handler(db, tool_input, retriever):
         calls.append(tool_input.query)
         return "result"
 
@@ -434,18 +463,20 @@ def test_agent_stops_when_tool_call_limit_is_reached():
         action=AgentAction.TOOL_CALL,
         tool=AllowedTool.SEARCH_KNOWLEDGE,
         tool_input={
-            "query": "billing"
+            "query": "billing",
         },
     )
 
-    llm = FakeLLM([
-        tool_response,
-        tool_response,
-        tool_response,
-        tool_response,
-        tool_response,
-        tool_response,
-    ])
+    llm = FakeLLM(
+        [
+            tool_response,
+            tool_response,
+            tool_response,
+            tool_response,
+            tool_response,
+            tool_response,
+        ]
+    )
 
     agent = make_agent(
         llm,
