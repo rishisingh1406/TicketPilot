@@ -11,6 +11,8 @@ from schemas import (
 )
 from pydantic import ValidationError
 
+from app.agent import Agent, search_knowledge
+from models import KnowledgeChunk
 
 class FakeLLM:
     def __init__(self, responses):
@@ -492,3 +494,100 @@ def test_agent_stops_when_tool_call_limit_is_reached():
     assert result == "result"
     assert len(calls) == 5
     assert llm.calls == 5
+
+
+def test_agent_answer_contains_retrieved_context():
+    retrieved_context = RAGResult(
+        query="How do I reset my password?",
+        chunks=[
+            RetrievedChunk(
+                chunk_id="1",
+                content="Users can reset their password from account settings.",
+                source="account_access_faq",
+                timestamp=None,
+                is_current=True,
+                distance=0.22,
+            )
+        ],
+    )
+
+    class FakeRetriever:
+        def retrieve_relevant_chunks(self, db, query, top_k=5):
+            chunk = retrieved_context.chunks[0]
+
+            return [
+                (
+                    KnowledgeChunk(
+                        chunk_id=int(chunk.chunk_id),
+                        content=chunk.content,
+                        source=chunk.source,
+                        timestamp=chunk.timestamp,
+                        is_current=chunk.is_current,
+                        embedding=[0.0] * 384,
+                    ),
+                    chunk.distance,
+                )
+            ]
+
+    responses = [
+        AgentResponse(
+            action=AgentAction.TOOL_CALL,
+            tool=AllowedTool.SEARCH_KNOWLEDGE,
+            tool_input={
+                "query": "How do I reset my password?"
+            },
+        ),
+        AgentResponse(
+            action=AgentAction.ANSWER,
+            user_message=(
+                "You can reset your password from account settings."
+            ),
+        ),
+    ]
+
+    class FakeLLM:
+        def __init__(self):
+            self.call_count = 0
+
+        def generate(self, messages):
+            response = responses[self.call_count]
+            self.call_count += 1
+            return response
+
+    agent = Agent(
+    system_prompt="You are a support agent.",
+    user_query="How do I reset my password?",
+    retrieved_chunks=[],
+    conversation_history=[],
+    previous_tool_calls=[],
+    previous_tool_results=[],
+    llm=FakeLLM(),
+    db=None,
+    retriever=FakeRetriever(),
+    tool_handlers={
+        AllowedTool.SEARCH_KNOWLEDGE: search_knowledge,
+    },
+    )
+
+    response = agent.run()
+
+    assert response.action == AgentAction.ANSWER
+    assert response.user_message == (
+        "You can reset your password from account settings."
+    )
+
+    assert response.retrieved_context is not None
+    assert response.retrieved_context.query == (
+        "How do I reset my password?"
+    )
+
+    assert len(response.retrieved_context.chunks) == 1
+
+    chunk = response.retrieved_context.chunks[0]
+
+    assert chunk.chunk_id == "1"
+    assert chunk.content == (
+        "Users can reset their password from account settings."
+    )
+    assert chunk.source == "account_access_faq"
+    assert chunk.distance == 0.22

@@ -1,80 +1,13 @@
-"""
-INITIALIZE AGENT
-
-    Receive:
-
-        - system prompt / agent instructions
-        - user query
-        - initially retrieved chunks
-        - conversation history
-        - previous tool calls and results
-        - tool handlers
-        - database session
-        - knowledge retriever
-
-    Set:
-
-        iteration = 1
-        tool_calls = 0
-        max_iterations = 5
-        max_tool_calls = 5
-
-
-WHILE iteration <= max_iterations:
-
-    Send current agent state to the LLM
-
-    LLM returns structured AgentResponse
-
-    Validate AgentResponse against schema
-
-        VALID → continue
-
-        INVALID → retry LLM once → validate again
-
-            VALID → continue
-
-            INVALID → fail execution
-
-    IF AgentResponse.action == TOOL_CALL:
-
-        Check whether requested tool is allowed
-
-        Check tool-call limit
-
-        Validate tool_input against the
-        schema belonging to that tool
-
-        Execute requested tool
-
-        Store:
-
-            - tool name
-            - tool input
-            - tool result
-
-        Increment tool-call count
-
-        Continue to next iteration
-
-    IF AgentResponse.action == ANSWER:
-
-        Return answer
-
-    IF AgentResponse.action == ESCALATE:
-
-        Send case to support
-
-END LOOP
-"""
-
 import json
+
 from typing import Any, Callable
 
 from pydantic import BaseModel, ValidationError
+
 from sqlalchemy.orm import Session
 
 from app.retrieval import KnowledgeRetriever
+
 from schemas import (
     AgentAction,
     AgentResponse,
@@ -164,16 +97,11 @@ class Agent:
         self.retriever = retriever
 
         # Tool implementations are injected into the agent.
-        #
-        # Example:
-        #
-        # {
-        #     AllowedTool.SEARCH_KNOWLEDGE: search_knowledge,
-        #     AllowedTool.GET_ACCOUNT: get_account,
-        #     AllowedTool.UPDATE_TICKET_STATUS: update_ticket_status,
-        # }
-        #
         self.tool_handlers = tool_handlers or {}
+
+        # Latest knowledge retrieved during this agent run.
+        # This is attached to the final AgentResponse.
+        self.latest_retrieved_context: RAGResult | None = None
 
     # ============================================================
     # Agent Loop
@@ -214,6 +142,13 @@ class Agent:
                 self.previous_tool_calls.append(response)
                 self.previous_tool_results.append(tool_result)
 
+                # ------------------------------------------------
+                # Store latest retrieval evidence
+                # ------------------------------------------------
+
+                if isinstance(tool_result, RAGResult):
+                    self.latest_retrieved_context = tool_result
+
                 # Increment tool-call count
                 self.tool_calls += 1
 
@@ -227,10 +162,6 @@ class Agent:
                     # already been executed and stored.
                     #
                     # Do NOT make another LLM call.
-                    #
-                    # The exact terminal behavior after this point
-                    # is still a separate orchestration decision.
-
                     return tool_result
 
                 # ------------------------------------------------
@@ -244,13 +175,23 @@ class Agent:
             # ----------------------------------------------------
 
             elif response.action == AgentAction.ANSWER:
-                return response
+
+                # Attach the latest retrieved evidence to the
+                # final answer returned by the agent.
+                return response.model_copy(
+                    update={
+                        "retrieved_context": (
+                            self.latest_retrieved_context
+                        )
+                    }
+                )
 
             # ----------------------------------------------------
             # ESCALATE
             # ----------------------------------------------------
 
             elif response.action == AgentAction.ESCALATE:
+
                 return self.escalate(response)
 
         # --------------------------------------------------------
@@ -514,6 +455,7 @@ class Agent:
         """
 
         if isinstance(value, BaseModel):
+
             return value.model_dump_json()
 
         try:
@@ -532,6 +474,7 @@ class Agent:
     # ============================================================
 
     def call_llm(self, messages):
+
         return self.llm.generate(messages)
 
     # ============================================================
