@@ -235,3 +235,64 @@ class KnowledgeChunk(Base):
         nullable=False,
         server_default=text("CURRENT_TIMESTAMP")
     )
+
+
+
+
+class AgentDecision(str, Enum):
+    ANSWER = "ANSWER"
+    ESCALATE = "ESCALATE"
+
+
+class ReviewerAction(str, Enum):
+    APPROVE = "APPROVE"
+    EDIT = "EDIT"
+    ESCALATE = "ESCALATE"
+
+
+class Review(Base):
+    __tablename__ = "reviews"
+
+    review_id: int = Column(
+        Integer,
+        primary_key=True,
+        autoincrement=True
+    )
+
+    ticket_id: int = Column(
+        Integer,
+        ForeignKey("tickets.ticket_id"),
+        nullable=False
+    )
+
+    agent_decision: AgentDecision = Column(
+        SQLEnum(AgentDecision),
+        nullable=False
+    )
+
+    agent_reason: str = Column(
+        String,
+        nullable=False
+    )
+
+    reviewer_action: ReviewerAction = Column(
+        SQLEnum(ReviewerAction),
+        nullable=True
+    )
+
+    reviewer_reason: str = Column(
+        String,
+        nullable=True
+    )
+
+    created_at = Column(
+        DateTime,
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP")
+    )
+
+
+
+
+
+   
