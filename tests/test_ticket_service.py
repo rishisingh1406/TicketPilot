@@ -1,5 +1,13 @@
 from app.ticket_service import generate_ticket_draft
-from models import Draft, Ticket
+
+from models import (
+    AgentDecision,
+    Draft,
+    Review,
+    Ticket,
+    TicketStatus,
+)
+
 from schemas import (
     AgentAction,
     AgentResponse,
@@ -134,7 +142,6 @@ def test_generate_ticket_draft_persists_retrieved_evidence(
 
     assert draft is not None
     assert draft.evidence
-
     assert "I forgot my password" in draft.evidence
     assert "Users can reset their password" in draft.evidence
     assert "account_access_faq" in draft.evidence
@@ -149,56 +156,90 @@ def test_generate_ticket_draft_persists_retrieved_evidence(
     assert stored_draft.evidence == draft.evidence
 
 
-def test_generate_ticket_draft_does_not_create_draft_on_escalation(
+class FakeEscalationAgent:
+    def __init__(
+        self,
+        system_prompt,
+        user_query,
+        retrieved_chunks,
+        conversation_history,
+        previous_tool_calls,
+        previous_tool_results,
+        llm,
+        db,
+        retriever,
+        tool_handlers,
+    ):
+        pass
+
+    def run(self):
+        return AgentResponse(
+            action=AgentAction.ESCALATE,
+            user_message="I need to transfer you to support.",
+            support_message=(
+                "The available knowledge is insufficient "
+                "to answer reliably."
+            ),
+        )
+
+
+def test_generate_ticket_draft_escalates_ticket(
     db_session,
     monkeypatch,
 ):
+    # Arrange
     ticket = Ticket(
-        user_id="123",
-        user_message="I have a problem that requires human support",
+        user_id="user-123",
+        user_message="I was charged an unexpected fee.",
     )
 
     db_session.add(ticket)
     db_session.commit()
     db_session.refresh(ticket)
 
-    class FakeEscalatingAgent:
-        def __init__(
-            self,
-            system_prompt,
-            user_query,
-            retrieved_chunks,
-            conversation_history,
-            previous_tool_calls,
-            previous_tool_results,
-            llm,
-            db,
-            retriever,
-            tool_handlers,
-        ):
-            pass
-
-        def run(self):
-            return AgentResponse(
-                action=AgentAction.ESCALATE,
-                user_message="I need to transfer you to support.",
-                support_message="This issue requires human support.",
-            )
-
     monkeypatch.setattr(
         "app.ticket_service.Agent",
-        FakeEscalatingAgent,
+        FakeEscalationAgent,
     )
 
-    draft = generate_ticket_draft(
+    # Act
+    result = generate_ticket_draft(
         db=db_session,
         ticket_id=ticket.ticket_id,
         llm=object(),
         retriever=object(),
     )
 
-    assert draft is None
+    # Assert
+    assert isinstance(result, Review)
 
+    updated_ticket = (
+        db_session.query(Ticket)
+        .filter(Ticket.ticket_id == ticket.ticket_id)
+        .first()
+    )
+
+    assert updated_ticket is not None
+    assert updated_ticket.status == TicketStatus.ESCALATED_TO_SUPPORT
+
+    review = (
+        db_session.query(Review)
+        .filter(Review.ticket_id == ticket.ticket_id)
+        .first()
+    )
+
+    assert review is not None
+    assert review.ticket_id == ticket.ticket_id
+    assert review.agent_decision == AgentDecision.ESCALATE
+    assert (
+        review.agent_reason
+        == "The available knowledge is insufficient "
+        "to answer reliably."
+    )
+    assert review.reviewer_action is None
+    assert review.reviewer_reason is None
+
+    # Escalation must not create a customer-facing draft.
     stored_draft = (
         db_session.query(Draft)
         .filter(Draft.ticket_id == ticket.ticket_id)

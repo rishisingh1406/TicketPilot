@@ -69,7 +69,6 @@ def update_ticket_decision(
 
     return ticket
 
-
 def generate_ticket_draft(
     db: Session,
     ticket_id: int,
@@ -103,7 +102,6 @@ def generate_ticket_draft(
     agent_response: AgentResponse = agent.run()
 
     if agent_response.action == AgentAction.ANSWER:
-
         evidence = ""
 
         if agent_response.retrieved_context is not None:
@@ -122,8 +120,14 @@ def generate_ticket_draft(
 
         return draft
 
-    return None
+    if agent_response.action == AgentAction.ESCALATE:
+        return escalate_ticket(
+            db=db,
+            ticket_id=ticket.ticket_id,
+            agent_response=agent_response,
+        )
 
+    return None
 
 
 def escalate_ticket(
