@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 
 from app.agent import Agent, search_knowledge
 from app.retrieval import KnowledgeRetriever
-from models import Draft, Ticket
+from models import Draft, Ticket , Review , AgentDecision
 from schemas import (
     AgentAction,
     AgentResponse,
@@ -123,3 +123,55 @@ def generate_ticket_draft(
         return draft
 
     return None
+
+
+
+def escalate_ticket(
+    db: Session,
+    ticket_id: int,
+    agent_response: AgentResponse,
+) -> Review:
+    """
+    Persist an agent escalation and transfer the ticket to human support.
+
+    The ticket status update and Review creation happen in the
+    same database transaction.
+    """
+
+    if agent_response.action != AgentAction.ESCALATE:
+        raise ValueError("escalate_ticket requires an ESCALATE agent response")
+
+    ticket = (
+        db.query(Ticket)
+        .filter(Ticket.ticket_id == ticket_id)
+        .first()
+    )
+
+    if ticket is None:
+        raise ValueError(f"Ticket {ticket_id} not found")
+
+    if not agent_response.support_message:
+        raise ValueError("Escalation requires a support_message/reason")
+
+    # Update durable ticket state
+    ticket.status = TicketStatus.ESCALATED_TO_SUPPORT
+
+    # Create human-support review/handoff record
+    review = Review(
+        ticket_id=ticket.ticket_id,
+        agent_decision=AgentDecision.ESCALATE,
+        agent_reason=agent_response.support_message,
+        reviewer_action=None,
+        reviewer_reason=None,
+    )
+
+    db.add(review)
+
+    # Both changes are committed atomically
+    db.commit()
+    db.refresh(review)
+
+    return review
+
+
+
