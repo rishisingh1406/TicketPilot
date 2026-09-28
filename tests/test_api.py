@@ -54,8 +54,21 @@ def test_get_tickets():
 
 
 def test_ticket_decision():
+    create_response = client.post(
+        "/tickets",
+        json={
+            "user_id": 123,
+            "message": "I was charged extra",
+        },
+    )
+
+    assert create_response.status_code == 200
+
+    ticket_data = create_response.json()
+    ticket_id = ticket_data["ticket_id"]
+
     response = client.post(
-        "/tickets/1/decision",
+        f"/tickets/{ticket_id}/decision",
         json={
             "decision": "RESOLVED",
         },
@@ -65,6 +78,6 @@ def test_ticket_decision():
 
     data = response.json()
 
-    assert data["ticket_id"] == "1"
+    assert data["ticket_id"] == ticket_id
     assert data["status"] == "RESOLVED"
     assert data["message"] == "Ticket decision updated successfully"

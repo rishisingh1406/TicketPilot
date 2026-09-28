@@ -1,5 +1,6 @@
 """
 tickets
+
 ├── ticket_id
 │   └── Primary key, auto-increment integer
 │
@@ -14,7 +15,7 @@ tickets
 │       CREATED
 │       PROCESSING
 │       RESOLVED
-│       ESCALATED
+│       ESCALATED_TO_SUPPORT
 │
 ├── created_at
 │   └── Required, PostgreSQL-generated timestamp
@@ -25,6 +26,7 @@ tickets
 """
 
 from enum import Enum
+
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     Boolean,
@@ -37,11 +39,16 @@ from sqlalchemy import (
     Text,
     text,
 )
-
 from sqlalchemy.orm import DeclarativeBase
+
 
 class Base(DeclarativeBase):
     pass
+
+
+# ============================================================
+# Ticket
+# ============================================================
 
 
 class TicketStatus(str, Enum):
@@ -49,7 +56,7 @@ class TicketStatus(str, Enum):
     PROCESSING = "PROCESSING"
     ESCALATED_TO_SUPPORT = "ESCALATED_TO_SUPPORT"
     RESOLVED = "RESOLVED"
-    
+
 
 class Ticket(Base):
     __tablename__ = "tickets"
@@ -57,106 +64,81 @@ class Ticket(Base):
     ticket_id: int = Column(
         Integer,
         primary_key=True,
-        autoincrement=True
+        autoincrement=True,
     )
 
     user_id: str = Column(
         String,
-        nullable=False
+        nullable=False,
     )
 
     user_message: str = Column(
         String,
-        nullable=False
+        nullable=False,
     )
 
     status: TicketStatus = Column(
         SQLEnum(TicketStatus),
         nullable=False,
-        default=TicketStatus.CREATED
+        default=TicketStatus.CREATED,
     )
 
     created_at = Column(
         DateTime,
         nullable=False,
-        server_default=text("CURRENT_TIMESTAMP")
+        server_default=text("CURRENT_TIMESTAMP"),
     )
 
     final_answer: str = Column(
         String,
-        nullable=True
+        nullable=True,
     )
 
 
+# ============================================================
+# Draft
+# ============================================================
 
-"""
-
-drafts
-
-├── ticket_id
-│   └── Primary key + foreign key → tickets.ticket_id
-│
-├── generated_answer
-│   └── Nullable
-│
-├── evidence
-│   └── Evidence / citations used to generate the answer
-│
-├── validation_result
-│   └── Nullable, human-readable validation result
-│
-├── model_metadata
-│   └── Information about the model/generation process
-│
-└── failure_reason
-    └── Nullable, reason for generation failure
-
-
-
-"""
 
 class Draft(Base):
     __tablename__ = "drafts"
 
-    generated_answer: str = Column(String, nullable=True)
+    generated_answer: str = Column(
+        String,
+        nullable=True,
+    )
 
-    evidence: str = Column(String, nullable=False)
+    evidence: str = Column(
+        String,
+        nullable=False,
+    )
 
-    validation_result: str = Column(String, nullable=True)
+    validation_result: str = Column(
+        String,
+        nullable=True,
+    )
 
-    model_metadata: str = Column(String, nullable=False)
+    model_metadata: str = Column(
+        String,
+        nullable=False,
+    )
 
-    failure_reason: str = Column(String, nullable=True)
+    failure_reason: str = Column(
+        String,
+        nullable=True,
+    )
 
     ticket_id = Column(
         Integer,
         ForeignKey("tickets.ticket_id"),
-        primary_key=True
+        primary_key=True,
     )
 
-"""
-audit
 
-├── audit_id
-│   └── Primary key, auto-increment integer
-│
-├── ticket_id
-│   └── Foreign key → tickets.ticket_id
-│
-├── event
-│   └── Free-form string describing what happened
-│
-├── component
-│   └── Free-form string identifying the component/tool
-│
-├── result
-│   └── Free-form string describing the outcome
-│
-└── created_at
-    └── Timestamp of when the event occurred
+# ============================================================
+# Audit
+# ============================================================
 
-
-"""
 
 class Audit(Base):
     __tablename__ = "audit"
@@ -164,35 +146,40 @@ class Audit(Base):
     audit_id: int = Column(
         Integer,
         primary_key=True,
-        autoincrement=True
+        autoincrement=True,
     )
 
     ticket_id: int = Column(
         Integer,
         ForeignKey("tickets.ticket_id"),
-        nullable=False
+        nullable=False,
     )
 
     event: str = Column(
         String,
-        nullable=False
+        nullable=False,
     )
 
     component: str = Column(
         String,
-        nullable=False
+        nullable=False,
     )
 
     result: str = Column(
         String,
-        nullable=False
+        nullable=False,
     )
 
     created_at = Column(
         DateTime,
         nullable=False,
-        server_default=text("CURRENT_TIMESTAMP")
+        server_default=text("CURRENT_TIMESTAMP"),
     )
+
+
+# ============================================================
+# Knowledge Chunks
+# ============================================================
 
 
 class KnowledgeChunk(Base):
@@ -201,42 +188,45 @@ class KnowledgeChunk(Base):
     chunk_id: int = Column(
         Integer,
         primary_key=True,
-        autoincrement=True
+        autoincrement=True,
     )
 
     content: str = Column(
         Text,
-        nullable=False
+        nullable=False,
     )
 
     source: str = Column(
         String,
-        nullable=False
+        nullable=False,
     )
 
     timestamp = Column(
         DateTime,
-        nullable=True
+        nullable=True,
     )
 
     is_current: bool = Column(
         Boolean,
         nullable=False,
-        default=True
+        default=True,
     )
 
     embedding = Column(
         Vector(384),
-        nullable=False
+        nullable=False,
     )
 
     created_at = Column(
         DateTime,
         nullable=False,
-        server_default=text("CURRENT_TIMESTAMP")
+        server_default=text("CURRENT_TIMESTAMP"),
     )
 
 
+# ============================================================
+# Agent Decision
+# ============================================================
 
 
 class AgentDecision(str, Enum):
@@ -244,10 +234,24 @@ class AgentDecision(str, Enum):
     ESCALATE = "ESCALATE"
 
 
+# ============================================================
+# Reviewer Action
+# ============================================================
+
+
 class ReviewerAction(str, Enum):
-    APPROVE = "APPROVE"
-    EDIT = "EDIT"
-    ESCALATE = "ESCALATE"
+    """
+    Business outcomes available to a human reviewer.
+    """
+
+    RESOLVE = "RESOLVE"
+    EDIT_AND_RESOLVE = "EDIT_AND_RESOLVE"
+    TAKE_OVER = "TAKE_OVER"
+
+
+# ============================================================
+# Review
+# ============================================================
 
 
 class Review(Base):
@@ -256,43 +260,66 @@ class Review(Base):
     review_id: int = Column(
         Integer,
         primary_key=True,
-        autoincrement=True
+        autoincrement=True,
     )
 
     ticket_id: int = Column(
         Integer,
         ForeignKey("tickets.ticket_id"),
-        nullable=False
+        nullable=False,
     )
+
+    # --------------------------------------------------------
+    # Agent decision
+    # --------------------------------------------------------
 
     agent_decision: AgentDecision = Column(
         SQLEnum(AgentDecision),
-        nullable=False
+        nullable=False,
     )
 
     agent_reason: str = Column(
         String,
-        nullable=False
+        nullable=False,
     )
+
+    # --------------------------------------------------------
+    # Human reviewer decision
+    # --------------------------------------------------------
 
     reviewer_action: ReviewerAction = Column(
         SQLEnum(ReviewerAction),
-        nullable=True
+        nullable=True,
     )
 
+    reviewer_identity: str = Column(
+        String,
+        nullable=True,
+    )
+
+    # Final answer written/accepted by the human reviewer.
+    #
+    # RESOLVE:
+    #     NULL because the existing AI draft is accepted.
+    #
+    # EDIT_AND_RESOLVE:
+    #     Contains the human-edited answer.
+    #
+    # TAKE_OVER:
+    #     NULL because support takes ownership.
+    reviewer_answer: str = Column(
+        String,
+        nullable=True,
+    )
+
+    # Required primarily for TAKE_OVER.
     reviewer_reason: str = Column(
         String,
-        nullable=True
+        nullable=True,
     )
 
     created_at = Column(
         DateTime,
         nullable=False,
-        server_default=text("CURRENT_TIMESTAMP")
+        server_default=text("CURRENT_TIMESTAMP"),
     )
-
-
-
-
-
-   

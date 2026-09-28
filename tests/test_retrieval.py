@@ -1,23 +1,34 @@
-from app.embeddings import EmbeddingModel
 from app.retrieval import KnowledgeRetriever
 from database import SessionLocal
+from models import KnowledgeChunk
 
 
 def test_retrieve_relevant_chunks(embedding_model):
     print("\nSTEP 1: Creating retriever", flush=True)
     retriever = KnowledgeRetriever(embedding_model)
 
-    query = "I forgot my password. How can I reset it?"
+    content = "Users can reset their password from the account settings page."
+    embedding = embedding_model.embed(content)
 
     print("STEP 2: Creating database session", flush=True)
     db = SessionLocal()
 
     try:
+        chunk = KnowledgeChunk(
+            content=content,
+            source="account_access_faq",
+            embedding=embedding,
+            is_current=True,
+        )
+
+        db.add(chunk)
+        db.commit()
+
         print("STEP 3: Calling retriever", flush=True)
 
         results = retriever.retrieve_relevant_chunks(
             db=db,
-            query=query,
+            query="I forgot my password. How can I reset it?",
             top_k=3,
         )
 
@@ -30,20 +41,20 @@ def test_retrieve_relevant_chunks(embedding_model):
         print(f"Retrieved chunk: {chunk.content}", flush=True)
         print(f"Distance: {distance}", flush=True)
 
-        assert chunk.content == (
-            "Users can reset their password from the account settings page."
-        )
-
+        assert chunk.content == content
+        assert chunk.source == "account_access_faq"
+        assert chunk.is_current is True
         assert distance >= 0
 
     finally:
-        print("STEP 5: Closing database", flush=True)
+        db.rollback()
+        db.query(KnowledgeChunk).delete()
+        db.commit()
         db.close()
 
 
 def test_retriever_rejects_empty_query():
-    embedding_model = EmbeddingModel()
-    retriever = KnowledgeRetriever(embedding_model)
+    retriever = KnowledgeRetriever(embedding_model=None)
     db = SessionLocal()
 
     try:
@@ -61,8 +72,7 @@ def test_retriever_rejects_empty_query():
 
 
 def test_retriever_rejects_invalid_top_k():
-    embedding_model = EmbeddingModel()
-    retriever = KnowledgeRetriever(embedding_model)
+    retriever = KnowledgeRetriever(embedding_model=None)
     db = SessionLocal()
 
     try:
@@ -80,8 +90,7 @@ def test_retriever_rejects_invalid_top_k():
 
 
 def test_retriever_rejects_excessive_top_k():
-    embedding_model = EmbeddingModel()
-    retriever = KnowledgeRetriever(embedding_model)
+    retriever = KnowledgeRetriever(embedding_model=None)
     db = SessionLocal()
 
     try:

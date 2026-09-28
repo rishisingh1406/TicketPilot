@@ -1,5 +1,7 @@
 from datetime import datetime
+
 from enum import Enum
+
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -55,11 +57,8 @@ class Ticket(BaseModel):
     ticket_id: str = Field(min_length=1)
     user_id: str = Field(min_length=1)
     original_user_message: str = Field(min_length=1)
-
     status: TicketStatus = TicketStatus.CREATED
-
     final_answer: str | None = None
-
     created_at: datetime
     updated_at: datetime
 
@@ -88,7 +87,6 @@ class IntegrityCheckResult(BaseModel):
 
     @model_validator(mode="after")
     def validate_reason(self) -> "IntegrityCheckResult":
-
         if self.decision == IntegrityDecision.BLOCK and not self.reason:
             raise ValueError(
                 "reason is required when decision is BLOCK"
@@ -125,7 +123,6 @@ class HandleabilityResult(BaseModel):
 
     @model_validator(mode="after")
     def validate_reason(self) -> "HandleabilityResult":
-
         if self.decision == Handleability.SUPPORT and not self.reason:
             raise ValueError(
                 "reason is required when decision is SUPPORT"
@@ -153,7 +150,10 @@ class RetrievedChunk(BaseModel):
     # Metadata used to distinguish newer/older manual content.
     timestamp: datetime | None = None
     is_current: bool | None = None
+
+    # Lower cosine distance means higher similarity.
     distance: float
+
 
 class RAGResult(BaseModel):
     """
@@ -181,6 +181,189 @@ class AllowedTool(str, Enum):
     SEARCH_KNOWLEDGE = "SEARCH_KNOWLEDGE"
     GET_ACCOUNT = "GET_ACCOUNT"
     UPDATE_TICKET_STATUS = "UPDATE_TICKET_STATUS"
+
+
+# ============================================================
+# Human Review Actions
+# ============================================================
+
+
+class ReviewerAction(str, Enum):
+    """
+    Business outcomes available to a human reviewer.
+
+    RESOLVE:
+        Accept the existing AI answer without modification.
+
+    EDIT_AND_RESOLVE:
+        Modify the AI answer and resolve the ticket.
+
+    TAKE_OVER:
+        The reviewer cannot safely resolve the ticket and
+        transfers ownership to human support.
+    """
+
+    RESOLVE = "RESOLVE"
+    EDIT_AND_RESOLVE = "EDIT_AND_RESOLVE"
+    TAKE_OVER = "TAKE_OVER"
+
+
+class ReviewerActionRequest(BaseModel):
+    """
+    Request submitted by the human reviewer.
+
+    The required fields depend on the selected action.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    action: ReviewerAction
+
+    reviewer_identity: str = Field(
+        min_length=1,
+        description="Identity of the human reviewer",
+    )
+
+    edited_answer: str | None = Field(
+        default=None,
+        description="Human-modified answer used for EDIT_AND_RESOLVE",
+    )
+
+    reason: str | None = Field(
+        default=None,
+        description="Reason required when taking over the ticket",
+    )
+
+    @model_validator(mode="after")
+    def validate_action_contract(self) -> "ReviewerActionRequest":
+
+        # ----------------------------------------------------
+        # RESOLVE
+        # ----------------------------------------------------
+
+        if self.action == ReviewerAction.RESOLVE:
+
+            if self.edited_answer is not None:
+                raise ValueError(
+                    "edited_answer must be null for RESOLVE"
+                )
+
+            if self.reason is not None:
+                raise ValueError(
+                    "reason must be null for RESOLVE"
+                )
+
+        # ----------------------------------------------------
+        # EDIT_AND_RESOLVE
+        # ----------------------------------------------------
+
+        elif self.action == ReviewerAction.EDIT_AND_RESOLVE:
+
+            if not self.edited_answer or not self.edited_answer.strip():
+                raise ValueError(
+                    "edited_answer is required for EDIT_AND_RESOLVE"
+                )
+
+            if self.reason is not None:
+                raise ValueError(
+                    "reason must be null for EDIT_AND_RESOLVE"
+                )
+
+        # ----------------------------------------------------
+        # TAKE_OVER
+        # ----------------------------------------------------
+
+        elif self.action == ReviewerAction.TAKE_OVER:
+
+            if not self.reason or not self.reason.strip():
+                raise ValueError(
+                    "reason is required for TAKE_OVER"
+                )
+
+            if self.edited_answer is not None:
+                raise ValueError(
+                    "edited_answer must be null for TAKE_OVER"
+                )
+
+        return self
+
+
+# ============================================================
+# Review Item
+# ============================================================
+
+
+class ReviewTicket(BaseModel):
+    """
+    Ticket information displayed to the human reviewer.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    ticket_id: str = Field(min_length=1)
+    user_id: str = Field(min_length=1)
+    original_user_message: str = Field(min_length=1)
+    conversation: list[dict[str, Any]] = Field(default_factory=list)
+    status: TicketStatus
+
+
+class ReviewAgentResult(BaseModel):
+    """
+    Agent output displayed to the human reviewer.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    proposed_answer: str | None = None
+    decision: AgentAction
+    reason: str | None = None
+
+
+class ReviewEvidence(BaseModel):
+    """
+    Evidence used by the agent while producing its result.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    retrieved_chunks: list[RetrievedChunk] = Field(
+        default_factory=list
+    )
+
+    sources: list[str] = Field(
+        default_factory=list
+    )
+
+
+class ReviewValidation(BaseModel):
+    """
+    Answer validation information displayed to the reviewer.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    status: str = Field(min_length=1)
+    reason: str | None = None
+
+
+class ReviewItem(BaseModel):
+    """
+    Complete review context presented to the human reviewer.
+
+    This is a read model for the reviewer interface.
+    It does not own business logic.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    ticket: ReviewTicket
+    agent_result: ReviewAgentResult
+    evidence: ReviewEvidence
+    tool_activity: list[dict[str, Any]] = Field(
+        default_factory=list
+    )
+    validation: ReviewValidation | None = None
+    escalation_context: str | None = None
 
 
 # ============================================================
@@ -255,14 +438,12 @@ class AgentResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     action: AgentAction
-
     tool: AllowedTool | None = None
 
     # Structured tool arguments.
     tool_input: dict[str, Any] | None = None
 
     user_message: str | None = None
-
     support_message: str | None = None
 
     retrieved_context: RAGResult | None = None
@@ -361,6 +542,7 @@ class AnswerValidationResult(BaseModel):
     Semantic validation result for a candidate answer.
 
     The validator checks whether the answer:
+
     1. Addresses the user's query.
     2. Is supported by retrieved approved manual content.
     """
@@ -466,9 +648,3 @@ class ClientResponse(BaseModel):
     ticket_id: str = Field(min_length=1)
     status: TicketStatus
     message: str = Field(min_length=1)
-
-
-"""
-i think we should determine the importantance by finding the similariy like the similar search kind og thing
-
-"""

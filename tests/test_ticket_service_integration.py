@@ -1,5 +1,5 @@
 from app.ticket_service import generate_ticket_draft
-from models import Draft, Ticket
+from models import Draft, KnowledgeChunk, Ticket
 from schemas import AgentAction, AgentResponse
 
 
@@ -33,6 +33,25 @@ class FakeLLM:
 def test_generate_ticket_draft_with_real_agent_and_retrieval(
     db_session,
 ):
+    from app.embeddings import EmbeddingModel
+    from app.retrieval import KnowledgeRetriever
+
+    embedding_model = EmbeddingModel()
+
+    knowledge_content = (
+        "Users can reset their password from the account settings page."
+    )
+
+    knowledge_chunk = KnowledgeChunk(
+        content=knowledge_content,
+        source="account_access_faq",
+        is_current=True,
+        embedding=embedding_model.embed(knowledge_content),
+    )
+
+    db_session.add(knowledge_chunk)
+    db_session.commit()
+
     ticket = Ticket(
         user_id="123",
         user_message="I forgot my password",
@@ -43,11 +62,6 @@ def test_generate_ticket_draft_with_real_agent_and_retrieval(
     db_session.refresh(ticket)
 
     llm = FakeLLM()
-
-    from app.embeddings import EmbeddingModel
-    from app.retrieval import KnowledgeRetriever
-
-    embedding_model = EmbeddingModel()
     retriever = KnowledgeRetriever(embedding_model)
 
     draft = generate_ticket_draft(
