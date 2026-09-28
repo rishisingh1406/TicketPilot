@@ -69,10 +69,16 @@ def test_generate_ticket_draft_creates_draft(
     assert draft is not None
     assert isinstance(draft, Draft)
     assert draft.ticket_id == ticket.ticket_id
+
     assert (
         draft.generated_answer
         == "You can reset your password from the account settings."
     )
+
+    # A successful agent answer must resolve the ticket.
+    db_session.refresh(ticket)
+
+    assert ticket.status == TicketStatus.RESOLVED
 
 
 def test_generate_ticket_draft_persists_retrieved_evidence(
@@ -155,6 +161,11 @@ def test_generate_ticket_draft_persists_retrieved_evidence(
     assert stored_draft is not None
     assert stored_draft.evidence == draft.evidence
 
+    # Evidence-backed successful answers also resolve the ticket.
+    db_session.refresh(ticket)
+
+    assert ticket.status == TicketStatus.RESOLVED
+
 
 class FakeEscalationAgent:
     def __init__(
@@ -220,7 +231,11 @@ def test_generate_ticket_draft_escalates_ticket(
     )
 
     assert updated_ticket is not None
-    assert updated_ticket.status == TicketStatus.ESCALATED_TO_SUPPORT
+
+    # Agent escalation places the ticket in the human review queue.
+    # It becomes ESCALATED_TO_SUPPORT only after the reviewer chooses
+    # TAKE_OVER.
+    assert updated_ticket.status == TicketStatus.REVIEW_REQUIRED
 
     review = (
         db_session.query(Review)
@@ -231,19 +246,27 @@ def test_generate_ticket_draft_escalates_ticket(
     assert review is not None
     assert review.ticket_id == ticket.ticket_id
     assert review.agent_decision == AgentDecision.ESCALATE
+
     assert (
         review.agent_reason
         == "The available knowledge is insufficient "
         "to answer reliably."
     )
+
     assert review.reviewer_action is None
     assert review.reviewer_reason is None
 
-    # Escalation must not create a customer-facing draft.
+    # Escalation also persists the agent's proposed
+    # customer-facing answer as a Draft.
     stored_draft = (
         db_session.query(Draft)
         .filter(Draft.ticket_id == ticket.ticket_id)
         .first()
     )
 
-    assert stored_draft is None
+    assert stored_draft is not None
+    assert stored_draft.ticket_id == ticket.ticket_id
+
+    assert stored_draft.generated_answer == (
+        "I need to transfer you to support."
+    )

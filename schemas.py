@@ -35,9 +35,10 @@ class CreateTicketRequest(BaseModel):
 class TicketStatus(str, Enum):
     CREATED = "CREATED"
     PROCESSING = "PROCESSING"
+    REVIEW_REQUIRED = "REVIEW_REQUIRED"
     ESCALATED_TO_SUPPORT = "ESCALATED_TO_SUPPORT"
     RESOLVED = "RESOLVED"
-
+    
 
 class TicketDecisionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")

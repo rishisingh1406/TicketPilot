@@ -1,29 +1,28 @@
-from fastapi import FastAPI, Depends
-from sqlalchemy.orm import Session
-
-from database import get_db
-from schemas import CreateTicketRequest, ClientResponse
-from app.ticket_service import create_ticket as create_ticket_service
-
-from app.ticket_service import (
-    create_ticket as create_ticket_service,
-    get_tickets as get_tickets_service,
-    update_ticket_decision,
-)
-
-from schemas import (
-    CreateTicketRequest,
-    ClientResponse,
-    TicketDecisionRequest,
-)
-
-from fastapi import FastAPI, Depends, HTTPException
-from app.logging_config import configure_logging
-
 import logging
 import uuid
 
-from fastapi import Request
+from fastapi import Depends, FastAPI, HTTPException, Request
+from sqlalchemy.orm import Session
+
+from app.logging_config import configure_logging
+from app.ticket_service import (
+    apply_reviewer_action,
+    create_ticket as create_ticket_service,
+    get_review_queue,
+    get_tickets as get_tickets_service,
+)
+from database import get_db
+from schemas import (
+    ClientResponse,
+    CreateTicketRequest,
+    ReviewItem,
+    ReviewerActionRequest,
+)
+
+
+# ============================================================
+# Application setup
+# ============================================================
 
 configure_logging()
 
@@ -32,10 +31,18 @@ app = FastAPI()
 logger = logging.getLogger(__name__)
 
 
+# ============================================================
+# Health
+# ============================================================
+
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
 
+
+# ============================================================
+# Ticket creation
+# ============================================================
 
 @app.post("/tickets", response_model=ClientResponse)
 def create_ticket(
@@ -55,40 +62,26 @@ def create_ticket(
     )
 
 
+# ============================================================
+# Ticket listing
+# ============================================================
 
 @app.get("/tickets")
-def get_tickets(db: Session = Depends(get_db)):
-    tickets = get_tickets_service(db=db)
-    return tickets
-
-
-@app.post("/tickets/{ticket_id}/decision")
-def make_ticket_decision(
-    ticket_id: int,
-    decision_data: TicketDecisionRequest,
+def get_tickets(
     db: Session = Depends(get_db),
 ):
-    ticket = update_ticket_decision(
-        db=db,
-        ticket_id=ticket_id,
-        decision=decision_data.decision,
-    )
+    return get_tickets_service(db=db)
 
-    if ticket is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Ticket not found",
-        )
 
-    return ClientResponse(
-        ticket_id=str(ticket.ticket_id),
-        status=ticket.status,
-        message="Ticket decision updated successfully",
-    )
-
+# ============================================================
+# Request logging middleware
+# ============================================================
 
 @app.middleware("http")
-async def request_logging_middleware(request: Request, call_next):
+async def request_logging_middleware(
+    request: Request,
+    call_next,
+):
     request_id = str(uuid.uuid4())
 
     request.state.request_id = request_id
@@ -108,3 +101,59 @@ async def request_logging_middleware(request: Request, call_next):
     response.headers["X-Request-ID"] = request_id
 
     return response
+
+
+# ============================================================
+# Human review queue
+# ============================================================
+
+@app.get(
+    "/reviews",
+    response_model=list[ReviewItem],
+)
+def get_reviews(
+    db: Session = Depends(get_db),
+):
+    return get_review_queue(db=db)
+
+
+# ============================================================
+# Human review action
+# ============================================================
+
+@app.post("/reviews/{ticket_id}/action")
+def reviewer_action(
+    ticket_id: int,
+    action_data: ReviewerActionRequest,
+    db: Session = Depends(get_db),
+):
+    try:
+        ticket, review = apply_reviewer_action(
+            db=db,
+            ticket_id=ticket_id,
+            action=action_data.action,
+            reviewer_identity=action_data.reviewer_identity,
+            edited_answer=action_data.edited_answer,
+            reason=action_data.reason,
+        )
+
+    except ValueError as exc:
+        message = str(exc)
+
+        if "not found" in message.lower():
+            raise HTTPException(
+                status_code=404,
+                detail=message,
+            )
+
+        raise HTTPException(
+            status_code=409,
+            detail=message,
+        )
+
+    return {
+        "ticket_id": ticket.ticket_id,
+        "status": ticket.status,
+        "reviewer_action": review.reviewer_action,
+        "message": "Reviewer action applied successfully",
+    }

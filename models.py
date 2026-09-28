@@ -56,6 +56,7 @@ class TicketStatus(str, Enum):
     PROCESSING = "PROCESSING"
     ESCALATED_TO_SUPPORT = "ESCALATED_TO_SUPPORT"
     RESOLVED = "RESOLVED"
+    REVIEW_REQUIRED = "REVIEW_REQUIRED"
 
 
 class Ticket(Base):
