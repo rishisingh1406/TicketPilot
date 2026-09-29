@@ -16,10 +16,12 @@ class GroqLLM:
         response = self.client.chat.completions.create(
             model=self.model,
             messages=messages,
+            max_tokens=800,
             response_format={
                 "type": "json_schema",
                 "json_schema": {
                     "name": "agent_response",
+                    "strict": True,
                     "schema": AgentResponse.model_json_schema(),
                 },
             },

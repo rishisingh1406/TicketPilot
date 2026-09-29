@@ -429,29 +429,18 @@ TOOL_INPUT_MODELS = {
 
 
 class AgentResponse(BaseModel):
-    """
-    Structured output contract returned by the LLM.
-
-    The LLM decides what action should happen next.
-    The orchestrator is responsible for actually executing it.
-    """
-
     model_config = ConfigDict(extra="forbid")
 
     action: AgentAction
     tool: AllowedTool | None = None
-
-    # Structured tool arguments.
     tool_input: dict[str, Any] | None = None
-
     user_message: str | None = None
     support_message: str | None = None
-
     retrieved_context: RAGResult | None = None
 
     @model_validator(mode="after")
     def validate_action_contract(self) -> "AgentResponse":
-
+        
         # ----------------------------------------------------
         # TOOL_CALL
         # ----------------------------------------------------

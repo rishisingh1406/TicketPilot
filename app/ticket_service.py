@@ -155,7 +155,6 @@ def escalate_ticket(
 
     The agent's proposed answer is stored as a Draft.
     The escalation reason is stored as a Review.
-
     Ticket state, Draft, and Review are committed atomically.
     """
 
@@ -238,13 +237,22 @@ def escalate_ticket(
 
 
 def apply_reviewer_action(
-    db,
+    db: Session,
     ticket_id: int,
     action: ReviewerAction,
     reviewer_identity: str,
     edited_answer: str | None = None,
     reason: str | None = None,
 ):
+    # ---------------------------------------------------------
+    # 0. Validate reviewer identity
+    # ---------------------------------------------------------
+
+    if not reviewer_identity or not reviewer_identity.strip():
+        raise ValueError("reviewer_identity is required")
+
+    reviewer_identity = reviewer_identity.strip()
+
     # ---------------------------------------------------------
     # 1. Load ticket
     # ---------------------------------------------------------
@@ -425,7 +433,6 @@ def get_review_queue(db: Session) -> list[ReviewItem]:
     review_items: list[ReviewItem] = []
 
     for ticket, review, draft in rows:
-
         # -----------------------------------------------------
         # Ticket information
         # -----------------------------------------------------

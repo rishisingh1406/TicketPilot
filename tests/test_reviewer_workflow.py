@@ -192,6 +192,36 @@ def test_reviewer_cannot_act_on_resolved_ticket(db_session):
         )
 
 
+def test_reviewer_cannot_act_on_missing_ticket(db_session):
+    with pytest.raises(ValueError, match="Ticket .* not found"):
+        apply_reviewer_action(
+            db=db_session,
+            ticket_id=999999,
+            action=ReviewerAction.RESOLVE,
+            reviewer_identity="reviewer-1",
+        )
+
+
+def test_reviewer_requires_existing_review(db_session):
+    ticket = Ticket(
+        user_id="123",
+        user_message="Ticket without review",
+        status=TicketStatus.REVIEW_REQUIRED,
+    )
+
+    db_session.add(ticket)
+    db_session.commit()
+
+    with pytest.raises(ValueError, match="Review not found"):
+        apply_reviewer_action(
+            db=db_session,
+            ticket_id=ticket.ticket_id,
+            action=ReviewerAction.TAKE_OVER,
+            reviewer_identity="reviewer-1",
+            reason="Manual investigation required.",
+        )
+
+
 def test_reviewer_resolve_requires_draft(db_session):
     ticket = Ticket(
         user_id="123",
@@ -283,3 +313,81 @@ def test_reviewer_take_over_requires_reason(db_session):
             reviewer_identity="reviewer-1",
             reason="   ",
         )
+
+
+def test_reviewer_requires_identity(db_session):
+    ticket = Ticket(
+        user_id="123",
+        user_message="Requires review",
+        status=TicketStatus.REVIEW_REQUIRED,
+    )
+
+    db_session.add(ticket)
+    db_session.flush()
+
+    draft = Draft(
+        ticket_id=ticket.ticket_id,
+        generated_answer="AI answer",
+        evidence="account_access_faq",
+        model_metadata="test",
+    )
+
+    review = Review(
+        ticket_id=ticket.ticket_id,
+        agent_decision=AgentDecision.ESCALATE,
+        agent_reason="Requires human review",
+    )
+
+    db_session.add_all([draft, review])
+    db_session.commit()
+
+    with pytest.raises(ValueError, match="reviewer_identity is required"):
+        apply_reviewer_action(
+            db=db_session,
+            ticket_id=ticket.ticket_id,
+            action=ReviewerAction.RESOLVE,
+            reviewer_identity="   ",
+        )
+
+
+def test_reviewer_take_over_does_not_require_draft(db_session):
+    """
+    TAKE_OVER represents a human taking ownership of the ticket.
+    Therefore it should not depend on an AI Draft existing.
+    """
+
+    ticket = Ticket(
+        user_id="123",
+        user_message="Unusual billing issue",
+        status=TicketStatus.REVIEW_REQUIRED,
+    )
+
+    db_session.add(ticket)
+    db_session.flush()
+
+    review = Review(
+        ticket_id=ticket.ticket_id,
+        agent_decision=AgentDecision.ESCALATE,
+        agent_reason="Requires manual investigation",
+    )
+
+    db_session.add(review)
+    db_session.commit()
+
+    ticket, review = apply_reviewer_action(
+        db=db_session,
+        ticket_id=ticket.ticket_id,
+        action=ReviewerAction.TAKE_OVER,
+        reviewer_identity="reviewer-1",
+        reason="Support team needs to investigate manually.",
+    )
+
+    assert ticket.status == TicketStatus.ESCALATED_TO_SUPPORT
+    assert ticket.final_answer is None
+
+    assert review.reviewer_action == ReviewerAction.TAKE_OVER
+    assert review.reviewer_identity == "reviewer-1"
+    assert (
+        review.reviewer_reason
+        == "Support team needs to investigate manually."
+    )
