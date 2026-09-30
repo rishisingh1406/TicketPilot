@@ -520,3 +520,18 @@ def get_review_queue(db: Session) -> list[ReviewItem]:
         review_items.append(review_item)
 
     return review_items
+
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+logger.info(
+    "reviewer action applied",
+    extra={
+        "ticket_id": ticket_id,
+        "reviewer_identity": reviewer_identity,
+        "reviewer_action": action.value,
+        "ticket_status": ticket.status.value,
+    },
+)
