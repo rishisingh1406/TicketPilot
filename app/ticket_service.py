@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy.orm import Session
 
 from app.agent import Agent, search_knowledge
@@ -24,6 +26,9 @@ from schemas import (
     ReviewValidation,
     RAGResult,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 SYSTEM_PROMPT = """
@@ -399,6 +404,16 @@ def apply_reviewer_action(
     db.refresh(ticket)
     db.refresh(review)
 
+    logger.info(
+        "reviewer action applied",
+        extra={
+            "ticket_id": ticket_id,
+            "reviewer_identity": reviewer_identity,
+            "reviewer_action": action.value,
+            "ticket_status": ticket.status.value,
+        },
+    )
+
     return ticket, review
 
 
@@ -520,18 +535,3 @@ def get_review_queue(db: Session) -> list[ReviewItem]:
         review_items.append(review_item)
 
     return review_items
-
-import logging
-
-logger = logging.getLogger(__name__)
-
-
-logger.info(
-    "reviewer action applied",
-    extra={
-        "ticket_id": ticket_id,
-        "reviewer_identity": reviewer_identity,
-        "reviewer_action": action.value,
-        "ticket_status": ticket.status.value,
-    },
-)

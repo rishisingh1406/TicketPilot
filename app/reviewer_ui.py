@@ -14,6 +14,10 @@ st.set_page_config(
 st.title("TicketPilot — Reviewer Queue")
 
 
+# ============================================================
+# API helpers
+# ============================================================
+
 def get_reviews():
     response = requests.get(
         f"{API_BASE_URL}/reviews",
@@ -44,6 +48,7 @@ def apply_reviewer_action(
     )
 
     response.raise_for_status()
+
     return response.json()
 
 
@@ -52,10 +57,8 @@ def get_error_detail(exc: requests.HTTPError) -> str:
         return str(exc)
 
     try:
-        return exc.response.json().get(
-            "detail",
-            str(exc),
-        )
+        data = exc.response.json()
+        return data.get("detail", str(exc))
     except ValueError:
         return str(exc)
 
@@ -64,12 +67,21 @@ def get_error_detail(exc: requests.HTTPError) -> str:
 # Reviewer identity
 # ============================================================
 
-reviewer_identity = st.sidebar.text_input(
+if "reviewer_identity" not in st.session_state:
+    st.session_state.reviewer_identity = ""
+
+
+st.session_state.reviewer_identity = st.sidebar.text_input(
     "Reviewer identity",
+    value=st.session_state.reviewer_identity,
     placeholder="e.g. reviewer-001",
 )
 
-if not reviewer_identity.strip():
+
+reviewer_identity = st.session_state.reviewer_identity.strip()
+
+
+if not reviewer_identity:
     st.warning(
         "Enter your reviewer identity before taking an action."
     )
@@ -93,9 +105,7 @@ st.subheader(f"Review Queue ({len(reviews)})")
 
 
 if not reviews:
-    st.info(
-        "No tickets are currently waiting for review."
-    )
+    st.info("No tickets are currently waiting for review.")
     st.stop()
 
 
@@ -111,42 +121,26 @@ for review in reviews:
 
     ticket_id = int(ticket["ticket_id"])
 
-    proposed_answer = agent_result.get(
-        "proposed_answer"
-    )
+    proposed_answer = agent_result.get("proposed_answer")
 
     with st.container(border=True):
 
-        st.markdown(
-            f"### Ticket #{ticket_id}"
-        )
+        st.markdown(f"### Ticket #{ticket_id}")
+
+        # ----------------------------------------------------
+        # Ticket information
+        # ----------------------------------------------------
 
         col1, col2 = st.columns(2)
 
-        # ----------------------------------------------------
-        # Customer / escalation information
-        # ----------------------------------------------------
-
         with col1:
-
             st.markdown("#### Customer message")
-
-            st.write(
-                ticket["original_user_message"]
-            )
+            st.write(ticket["original_user_message"])
 
             st.markdown("#### Escalation reason")
-
-            st.write(
-                review["escalation_context"]
-            )
-
-        # ----------------------------------------------------
-        # Agent result
-        # ----------------------------------------------------
+            st.write(review["escalation_context"])
 
         with col2:
-
             st.markdown("#### Proposed AI answer")
 
             if proposed_answer:
@@ -157,10 +151,7 @@ for review in reviews:
                 )
 
             st.markdown("#### Agent decision")
-
-            st.write(
-                agent_result["decision"]
-            )
+            st.write(agent_result["decision"])
 
         # ----------------------------------------------------
         # Retrieved evidence
@@ -168,30 +159,16 @@ for review in reviews:
 
         st.markdown("#### Retrieved evidence")
 
-        chunks = evidence.get(
-            "retrieved_chunks",
-            [],
-        )
+        chunks = evidence.get("retrieved_chunks", [])
 
         if not chunks:
-
-            st.write(
-                "No retrieved evidence."
-            )
-
+            st.write("No retrieved evidence.")
         else:
-
-            for index, chunk in enumerate(
-                chunks,
-                start=1,
-            ):
-
+            for index, chunk in enumerate(chunks, start=1):
                 with st.expander(
                     f"Evidence {index} — {chunk['source']}"
                 ):
-                    st.write(
-                        chunk["content"]
-                    )
+                    st.write(chunk["content"])
 
         st.divider()
 
@@ -201,9 +178,7 @@ for review in reviews:
 
         st.markdown("#### Reviewer action")
 
-        action_col1, action_col2, action_col3 = (
-            st.columns(3)
-        )
+        action_col1, action_col2, action_col3 = st.columns(3)
 
         # ----------------------------------------------------
         # RESOLVE
@@ -211,42 +186,35 @@ for review in reviews:
 
         with action_col1:
 
+            st.markdown("##### Resolve")
+
             if st.button(
                 "Resolve",
                 key=f"resolve_{ticket_id}",
-                disabled=not reviewer_identity.strip(),
+                disabled=not reviewer_identity,
                 use_container_width=True,
             ):
-
                 try:
-
                     apply_reviewer_action(
                         ticket_id=ticket_id,
                         action="RESOLVE",
-                        reviewer_identity=(
-                            reviewer_identity.strip()
-                        ),
+                        reviewer_identity=reviewer_identity,
                     )
 
                     st.success(
-                        f"Ticket #{ticket_id} "
-                        "resolved successfully."
+                        f"Ticket #{ticket_id} resolved successfully."
                     )
 
                     st.rerun()
 
                 except requests.HTTPError as exc:
-
                     st.error(
-                        f"Resolve failed: "
-                        f"{get_error_detail(exc)}"
+                        f"Resolve failed: {get_error_detail(exc)}"
                     )
 
                 except requests.RequestException as exc:
-
                     st.error(
-                        "Could not reach TicketPilot API: "
-                        f"{exc}"
+                        f"Could not reach TicketPilot API: {exc}"
                     )
 
         # ----------------------------------------------------
@@ -255,64 +223,49 @@ for review in reviews:
 
         with action_col2:
 
-            edit_expanded = st.checkbox(
-                "Edit answer",
-                key=f"edit_toggle_{ticket_id}",
+            st.markdown("##### Edit & Resolve")
+
+            edited_answer = st.text_area(
+                "Answer",
+                value=proposed_answer or "",
+                key=f"edited_answer_{ticket_id}",
+                height=150,
+                placeholder="Enter the final answer for the customer.",
             )
 
-            if edit_expanded:
+            if st.button(
+                "Edit & Resolve",
+                key=f"edit_resolve_{ticket_id}",
+                disabled=(
+                    not reviewer_identity
+                    or not edited_answer.strip()
+                ),
+                use_container_width=True,
+            ):
+                try:
+                    apply_reviewer_action(
+                        ticket_id=ticket_id,
+                        action="EDIT_AND_RESOLVE",
+                        reviewer_identity=reviewer_identity,
+                        edited_answer=edited_answer.strip(),
+                    )
 
-                edited_answer = st.text_area(
-                    "Edited answer",
-                    value=proposed_answer or "",
-                    key=f"edited_answer_{ticket_id}",
-                    height=150,
-                )
+                    st.success(
+                        f"Ticket #{ticket_id} edited and resolved."
+                    )
 
-                if st.button(
-                    "Edit & Resolve",
-                    key=f"edit_resolve_{ticket_id}",
-                    disabled=(
-                        not reviewer_identity.strip()
-                        or not edited_answer.strip()
-                    ),
-                    use_container_width=True,
-                ):
+                    st.rerun()
 
-                    try:
+                except requests.HTTPError as exc:
+                    st.error(
+                        "Edit & Resolve failed: "
+                        f"{get_error_detail(exc)}"
+                    )
 
-                        apply_reviewer_action(
-                            ticket_id=ticket_id,
-                            action="EDIT_AND_RESOLVE",
-                            reviewer_identity=(
-                                reviewer_identity.strip()
-                            ),
-                            edited_answer=(
-                                edited_answer.strip()
-                            ),
-                        )
-
-                        st.success(
-                            f"Ticket #{ticket_id} "
-                            "edited and resolved."
-                        )
-
-                        st.rerun()
-
-                    except requests.HTTPError as exc:
-
-                        st.error(
-                            f"Edit & resolve failed: "
-                            f"{get_error_detail(exc)}"
-                        )
-
-                    except requests.RequestException as exc:
-
-                        st.error(
-                            "Could not reach "
-                            "TicketPilot API: "
-                            f"{exc}"
-                        )
+                except requests.RequestException as exc:
+                    st.error(
+                        f"Could not reach TicketPilot API: {exc}"
+                    )
 
         # ----------------------------------------------------
         # TAKE OVER
@@ -320,57 +273,61 @@ for review in reviews:
 
         with action_col3:
 
-            takeover_reason = st.text_area(
-                "Take-over reason",
-                placeholder=(
-                    "Why does this require "
-                    "human support?"
-                ),
-                key=f"takeover_reason_{ticket_id}",
-                height=100,
-            )
+            st.markdown("##### Take Over")
 
-            if st.button(
-                "Take Over",
-                key=f"takeover_{ticket_id}",
-                disabled=(
-                    not reviewer_identity.strip()
-                    or not takeover_reason.strip()
-                ),
-                use_container_width=True,
+            # A form makes the reason + button submission explicit.
+            # This avoids relying on separate widget state updates.
+            with st.form(
+                key=f"takeover_form_{ticket_id}"
             ):
 
-                try:
+                takeover_reason = st.text_area(
+                    "Reason",
+                    placeholder=(
+                        "Why does this require human support?"
+                    ),
+                    key=f"takeover_reason_{ticket_id}",
+                    height=150,
+                )
 
-                    apply_reviewer_action(
-                        ticket_id=ticket_id,
-                        action="TAKE_OVER",
-                        reviewer_identity=(
-                            reviewer_identity.strip()
-                        ),
-                        reason=(
-                            takeover_reason.strip()
-                        ),
-                    )
+                takeover_submitted = st.form_submit_button(
+                    "Take Over",
+                    disabled=not reviewer_identity,
+                    use_container_width=True,
+                )
 
-                    st.success(
-                        f"Ticket #{ticket_id} "
-                        "handed over to support."
-                    )
+            if takeover_submitted:
 
-                    st.rerun()
-
-                except requests.HTTPError as exc:
-
+                if not takeover_reason.strip():
                     st.error(
-                        f"Take over failed: "
-                        f"{get_error_detail(exc)}"
+                        "Enter a take-over reason before "
+                        "submitting."
                     )
 
-                except requests.RequestException as exc:
+                else:
+                    try:
+                        apply_reviewer_action(
+                            ticket_id=ticket_id,
+                            action="TAKE_OVER",
+                            reviewer_identity=reviewer_identity,
+                            reason=takeover_reason.strip(),
+                        )
 
-                    st.error(
-                        "Could not reach "
-                        "TicketPilot API: "
-                        f"{exc}"
-                    )
+                        st.success(
+                            f"Ticket #{ticket_id} handed over "
+                            "to support."
+                        )
+
+                        st.rerun()
+
+                    except requests.HTTPError as exc:
+                        st.error(
+                            "Take Over failed: "
+                            f"{get_error_detail(exc)}"
+                        )
+
+                    except requests.RequestException as exc:
+                        st.error(
+                            "Could not reach TicketPilot API: "
+                            f"{exc}"
+                        )
