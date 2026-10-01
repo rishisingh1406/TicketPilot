@@ -380,7 +380,6 @@ class Agent:
                 self.previous_tool_calls,
                 self.previous_tool_results,
             ):
-
                 tool_history.append(
                     (
                         "<tool_call>\n"
@@ -414,10 +413,18 @@ class Agent:
         # ========================================================
 
         try:
-
             response = self.call_llm(messages)
-
             return response
+
+        except TimeoutError as error:
+            return AgentResponse(
+                action=AgentAction.ESCALATE,
+                user_message=(
+                    "We’re unable to process your request right now. "
+                    "A support agent will review it."
+                ),
+                support_message=f"LLM timeout: {error}",
+            )
 
         except (json.JSONDecodeError, ValidationError):
 
@@ -426,9 +433,7 @@ class Agent:
             # ====================================================
 
             try:
-
                 response = self.call_llm(messages)
-
                 return response
 
             except (
@@ -436,11 +441,18 @@ class Agent:
                 ValidationError,
             ) as second_error:
 
-                raise RuntimeError(
-                    "LLM returned invalid structured output "
-                    "after one retry"
-                ) from second_error
-
+                return AgentResponse(
+                    action=AgentAction.ESCALATE,
+                    user_message=(
+                        "We’re unable to process your request "
+                        "right now. A support agent will review it."
+                    ),
+                    support_message=(
+                        "LLM returned invalid structured output "
+                        "after one retry: "
+                        f"{second_error}"
+                    ),
+                )
     # ============================================================
     # Serialize Data For Prompt
     # ============================================================

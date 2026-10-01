@@ -1,6 +1,6 @@
 import pytest
 
-from app.agent import Agent
+from app.agent import Agent, search_knowledge
 from schemas import (
     AgentAction,
     AgentResponse,
@@ -10,9 +10,8 @@ from schemas import (
     TicketStatus,
 )
 from pydantic import ValidationError
-
-from app.agent import Agent, search_knowledge
 from models import KnowledgeChunk
+
 
 class FakeLLM:
     def __init__(self, responses):
@@ -22,7 +21,6 @@ class FakeLLM:
 
     def generate(self, messages):
         self.messages.append(messages)
-
         response = self.responses[self.calls]
         self.calls += 1
 
@@ -75,7 +73,6 @@ def test_prompt_assembly_preserves_system_prompt():
     )
 
     agent = make_agent(llm)
-
     agent.run()
 
     messages = llm.messages[0]
@@ -95,7 +92,6 @@ def test_prompt_assembly_includes_user_query():
     )
 
     agent = make_agent(llm)
-
     agent.run()
 
     messages = llm.messages[0]
@@ -202,7 +198,6 @@ def test_prompt_assembly_delimits_tool_history():
     assert "<tool_result>" in content
     assert "</tool_result>" in content
     assert "</tool_history>" in content
-
     assert "duplicate billing" in content
     assert "Duplicate billing policy." in content
 
@@ -219,7 +214,6 @@ def test_search_knowledge_dispatch():
         received["db"] = db
         received["input"] = tool_input
         received["retriever"] = retriever
-
         return "search-result"
 
     llm = FakeLLM([])
@@ -332,7 +326,6 @@ def test_invalid_tool_input_is_rejected():
 
 def test_missing_tool_handler_is_rejected():
     llm = FakeLLM([])
-
     agent = make_agent(llm)
 
     response = AgentResponse(
@@ -377,7 +370,6 @@ def test_invalid_structured_output_retries_once():
             return valid_response
 
     llm = RetryLLM()
-
     agent = make_agent(llm)
 
     result = agent.run()
@@ -386,30 +378,9 @@ def test_invalid_structured_output_retries_once():
     assert llm.calls == 2
 
 
-def test_invalid_structured_output_twice_fails():
-    class AlwaysInvalidLLM:
-        def __init__(self):
-            self.calls = 0
-
-        def generate(self, messages):
-            self.calls += 1
-
-            raise ValidationError.from_exception_data(
-                "AgentResponse",
-                [],
-            )
-
-    llm = AlwaysInvalidLLM()
-
-    agent = make_agent(llm)
-
-    with pytest.raises(
-        RuntimeError,
-        match="invalid structured output after one retry",
-    ):
-        agent.run()
-
-    assert llm.calls == 2
+# ---------------------------------------------------------
+# Bounded agent loop
+# ---------------------------------------------------------
 
 
 def test_agent_executes_tool_on_iteration_five_then_stops():
@@ -447,7 +418,6 @@ def test_agent_executes_tool_on_iteration_five_then_stops():
     result = agent.run()
 
     assert result == "final-tool-result"
-
     assert len(calls) == 5
     assert llm.calls == 5
     assert agent.iteration == 5
@@ -494,6 +464,11 @@ def test_agent_stops_when_tool_call_limit_is_reached():
     assert result == "result"
     assert len(calls) == 5
     assert llm.calls == 5
+
+
+# ---------------------------------------------------------
+# Retrieval context
+# ---------------------------------------------------------
 
 
 def test_agent_answer_contains_retrieved_context():
@@ -555,18 +530,18 @@ def test_agent_answer_contains_retrieved_context():
             return response
 
     agent = Agent(
-    system_prompt="You are a support agent.",
-    user_query="How do I reset my password?",
-    retrieved_chunks=[],
-    conversation_history=[],
-    previous_tool_calls=[],
-    previous_tool_results=[],
-    llm=FakeLLM(),
-    db=None,
-    retriever=FakeRetriever(),
-    tool_handlers={
-        AllowedTool.SEARCH_KNOWLEDGE: search_knowledge,
-    },
+        system_prompt="You are a support agent.",
+        user_query="How do I reset my password?",
+        retrieved_chunks=[],
+        conversation_history=[],
+        previous_tool_calls=[],
+        previous_tool_results=[],
+        llm=FakeLLM(),
+        db=None,
+        retriever=FakeRetriever(),
+        tool_handlers={
+            AllowedTool.SEARCH_KNOWLEDGE: search_knowledge,
+        },
     )
 
     response = agent.run()
@@ -575,12 +550,10 @@ def test_agent_answer_contains_retrieved_context():
     assert response.user_message == (
         "You can reset your password from account settings."
     )
-
     assert response.retrieved_context is not None
     assert response.retrieved_context.query == (
         "How do I reset my password?"
     )
-
     assert len(response.retrieved_context.chunks) == 1
 
     chunk = response.retrieved_context.chunks[0]
@@ -591,3 +564,54 @@ def test_agent_answer_contains_retrieved_context():
     )
     assert chunk.source == "account_access_faq"
     assert chunk.distance == 0.22
+
+
+# ---------------------------------------------------------
+# Failure engineering
+# ---------------------------------------------------------
+
+
+def test_llm_timeout_falls_back_to_human_review():
+    class TimeoutLLM:
+        def __init__(self):
+            self.calls = 0
+
+        def generate(self, messages):
+            self.calls += 1
+            raise TimeoutError("LLM request timed out")
+
+    llm = TimeoutLLM()
+    agent = make_agent(llm)
+
+    result = agent.run()
+
+    assert result.action == AgentAction.ESCALATE
+    assert result.user_message is not None
+    assert result.support_message is not None
+    assert "timeout" in result.support_message.lower()
+    assert llm.calls == 1
+
+
+def test_invalid_structured_output_twice_escalates_to_human_review():
+    class AlwaysInvalidLLM:
+        def __init__(self):
+            self.calls = 0
+
+        def generate(self, messages):
+            self.calls += 1
+
+            raise ValidationError.from_exception_data(
+                "AgentResponse",
+                [],
+            )
+
+    llm = AlwaysInvalidLLM()
+    agent = make_agent(llm)
+
+    result = agent.run()
+
+    assert result.action == AgentAction.ESCALATE
+    assert result.user_message is not None
+    assert result.support_message is not None
+    assert "invalid structured output" in result.support_message.lower()
+    assert llm.calls == 2
