@@ -2,7 +2,7 @@ import json
 
 from groq import Groq
 
-from schemas import AgentResponse
+from schemas import AgentLLMResponse
 
 
 class GroqLLM:
@@ -11,7 +11,7 @@ class GroqLLM:
         self.client = Groq(api_key=api_key)
         self.model = model
 
-    def generate(self, messages: list[dict]) -> AgentResponse:
+    def generate(self, messages: list[dict]) -> AgentLLMResponse:
 
         response = self.client.chat.completions.create(
             model=self.model,
@@ -22,7 +22,7 @@ class GroqLLM:
                 "json_schema": {
                     "name": "agent_response",
                     "strict": True,
-                    "schema": AgentResponse.model_json_schema(),
+                    "schema": AgentLLMResponse.model_json_schema(),
                 },
             },
         )
@@ -34,4 +34,4 @@ class GroqLLM:
         print("RAW MODEL DATA:")
         print(data)
 
-        return AgentResponse.model_validate(data)
+        return AgentLLMResponse.model_validate(data)

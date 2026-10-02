@@ -426,7 +426,137 @@ TOOL_INPUT_MODELS = {
 # ============================================================
 # Agent Response
 # ============================================================
+class AgentLLMToolInput(BaseModel):
+    """
+    Provider-facing tool input.
 
+    Groq strict JSON schema requires a closed object with
+    explicitly declared properties.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    query: str
+    status: str
+
+
+
+class AgentLLMResponse(BaseModel):
+    """
+    Provider-facing LLM response.
+
+    The provider receives one strict, closed schema.
+    Application code converts the selected tool into the
+    appropriate internal tool-input contract.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    action: AgentAction
+    tool: str
+    query: str
+    status: str
+    user_message: str
+    support_message: str
+
+    @model_validator(mode="after")
+    def validate_action_contract(self) -> "AgentLLMResponse":
+
+        valid_tools = {tool.value for tool in AllowedTool}
+
+        if self.action == AgentAction.TOOL_CALL:
+
+            if self.tool not in valid_tools:
+                raise ValueError(
+                    "TOOL_CALL requires a valid tool"
+                )
+
+            if self.tool == AllowedTool.SEARCH_KNOWLEDGE.value:
+
+                if not self.query.strip():
+                    raise ValueError(
+                        "SEARCH_KNOWLEDGE requires query"
+                    )
+
+                if self.status:
+                    raise ValueError(
+                        "SEARCH_KNOWLEDGE requires empty status"
+                    )
+
+            elif self.tool == AllowedTool.GET_ACCOUNT.value:
+
+                if self.query or self.status:
+                    raise ValueError(
+                        "GET_ACCOUNT requires empty query and status"
+                    )
+
+            elif self.tool == AllowedTool.UPDATE_TICKET_STATUS.value:
+
+                if self.query:
+                    raise ValueError(
+                        "UPDATE_TICKET_STATUS requires empty query"
+                    )
+
+                if not self.status.strip():
+                    raise ValueError(
+                        "UPDATE_TICKET_STATUS requires status"
+                    )
+
+            if self.user_message:
+                raise ValueError(
+                    "TOOL_CALL requires user_message to be empty"
+                )
+
+            if self.support_message:
+                raise ValueError(
+                    "TOOL_CALL requires support_message to be empty"
+                )
+
+        elif self.action == AgentAction.ANSWER:
+
+            if self.tool:
+                raise ValueError(
+                    "ANSWER requires tool to be empty"
+                )
+
+            if self.query or self.status:
+                raise ValueError(
+                    "ANSWER requires empty query and status"
+                )
+
+            if not self.user_message:
+                raise ValueError(
+                    "ANSWER requires user_message"
+                )
+
+            if self.support_message:
+                raise ValueError(
+                    "ANSWER requires support_message to be empty"
+                )
+
+        elif self.action == AgentAction.ESCALATE:
+
+            if self.tool:
+                raise ValueError(
+                    "ESCALATE requires tool to be empty"
+                )
+
+            if self.query or self.status:
+                raise ValueError(
+                    "ESCALATE requires empty query and status"
+                )
+
+            if not self.user_message:
+                raise ValueError(
+                    "ESCALATE requires user_message"
+                )
+
+            if not self.support_message:
+                raise ValueError(
+                    "ESCALATE requires support_message"
+                )
+
+        return self
 
 class AgentResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")

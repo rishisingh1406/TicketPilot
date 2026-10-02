@@ -1,5 +1,5 @@
 import json
-
+from groq import BadRequestError
 from typing import Any, Callable
 
 from pydantic import BaseModel, ValidationError
@@ -35,12 +35,15 @@ def search_knowledge(
     The LLM provides only the search query.
     Retrieval policy and database access remain application-owned.
     """
+    print("SEARCH_KNOWLEDGE: starting retrieval")
+
 
     results = retriever.retrieve_relevant_chunks(
         db=db,
         query=tool_input.query,
         top_k=5,
     )
+    print("SEARCH_KNOWLEDGE: retrieval completed")
 
     chunks = [
         RetrievedChunk(
@@ -117,6 +120,12 @@ class Agent:
 
             response = self.generate_response()
 
+            print("AGENT RESPONSE:")
+            print(response.model_dump())
+            print("ACTION:", response.action)
+            print("TOOL:", response.tool)
+            print("TOOL INPUT:", response.tool_input)
+
             # ----------------------------------------------------
             # TOOL_CALL
             # ----------------------------------------------------
@@ -135,39 +144,57 @@ class Agent:
                         "Requested tool is not allowed"
                     )
 
+                # ------------------------------------------------
                 # Execute tool
+                # ------------------------------------------------
+
+                print("EXECUTING TOOL:")
+                print("TOOL:", response.tool)
+                print("TOOL INPUT:", response.tool_input)
+
                 tool_result = self.call_tool(response)
 
+                print("TOOL RESULT:")
+                print(self.serialize_for_prompt(tool_result))
+
+                # ------------------------------------------------
                 # Store tool call and result
+                # ------------------------------------------------
+
                 self.previous_tool_calls.append(response)
                 self.previous_tool_results.append(tool_result)
 
                 # ------------------------------------------------
-                # Store latest retrieval evidence
+                # Store latest retrieval context
                 # ------------------------------------------------
 
                 if isinstance(tool_result, RAGResult):
                     self.latest_retrieved_context = tool_result
 
-                # Increment tool-call count
+                # ------------------------------------------------
+                # Increment tool call count
+                # ------------------------------------------------
+
                 self.tool_calls += 1
 
                 # ------------------------------------------------
-                # Final iteration
+                # Final iteration check
                 # ------------------------------------------------
 
-                if self.iteration == self.max_iterations:
+                if self.iteration >= self.max_iterations:
+                    return AgentResponse(
+                        action=AgentAction.ESCALATE,
+                        user_message=(
+                            "We’re unable to complete your request "
+                            "automatically. A support agent will "
+                            "review it."
+                        ),
+                        support_message=(
+                            "Maximum agent iterations reached."
+                        ),
+                    )
 
-                    # The tool from the final iteration has
-                    # already been executed and stored.
-                    #
-                    # Do NOT make another LLM call.
-                    return tool_result
-
-                # ------------------------------------------------
-                # Continue agent loop
-                # ------------------------------------------------
-
+                # Continue the agent loop
                 self.iteration += 1
 
             # ----------------------------------------------------
@@ -380,6 +407,7 @@ class Agent:
                 self.previous_tool_calls,
                 self.previous_tool_results,
             ):
+
                 tool_history.append(
                     (
                         "<tool_call>\n"
@@ -413,10 +441,13 @@ class Agent:
         # ========================================================
 
         try:
+
             response = self.call_llm(messages)
+
             return response
 
         except TimeoutError as error:
+
             return AgentResponse(
                 action=AgentAction.ESCALATE,
                 user_message=(
@@ -426,19 +457,27 @@ class Agent:
                 support_message=f"LLM timeout: {error}",
             )
 
-        except (json.JSONDecodeError, ValidationError):
+        except (
+            json.JSONDecodeError,
+            ValidationError,
+            BadRequestError,
+        ):
 
             # ====================================================
             # One validation retry
             # ====================================================
 
             try:
+
                 response = self.call_llm(messages)
+
                 return response
 
             except (
                 json.JSONDecodeError,
                 ValidationError,
+                BadRequestError
+                
             ) as second_error:
 
                 return AgentResponse(
@@ -453,6 +492,7 @@ class Agent:
                         f"{second_error}"
                     ),
                 )
+
     # ============================================================
     # Serialize Data For Prompt
     # ============================================================
@@ -477,7 +517,10 @@ class Agent:
                 default=str,
             )
 
-        except (TypeError, ValueError):
+        except (
+            TypeError,
+            ValueError,
+        ):
 
             return str(value)
 
@@ -487,7 +530,61 @@ class Agent:
 
     def call_llm(self, messages):
 
-        return self.llm.generate(messages)
+        llm_response = self.llm.generate(messages)
+
+        tool = None
+        tool_input = None
+        user_message = None
+        support_message = None
+
+        # --------------------------------------------------------
+        # TOOL_CALL
+        # --------------------------------------------------------
+
+        if llm_response.action == AgentAction.TOOL_CALL:
+
+            tool = AllowedTool(llm_response.tool)
+
+            if tool == AllowedTool.SEARCH_KNOWLEDGE:
+
+                tool_input = {
+                    "query": llm_response.query,
+                }
+
+            elif tool == AllowedTool.GET_ACCOUNT:
+
+                tool_input = {}
+
+            elif tool == AllowedTool.UPDATE_TICKET_STATUS:
+
+                tool_input = {
+                    "status": llm_response.status,
+                }
+
+        # --------------------------------------------------------
+        # ANSWER
+        # --------------------------------------------------------
+
+        elif llm_response.action == AgentAction.ANSWER:
+
+            user_message = llm_response.user_message
+
+        # --------------------------------------------------------
+        # ESCALATE
+        # --------------------------------------------------------
+
+        elif llm_response.action == AgentAction.ESCALATE:
+
+            user_message = llm_response.user_message
+            support_message = llm_response.support_message
+
+        return AgentResponse(
+            action=llm_response.action,
+            tool=tool,
+            tool_input=tool_input,
+            user_message=user_message,
+            support_message=support_message,
+        )
 
     # ============================================================
     # Escalation
@@ -503,4 +600,3 @@ class Agent:
         """
 
         return response
-
