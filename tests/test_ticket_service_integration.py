@@ -3,6 +3,8 @@ from app.ticket_service import (
     generate_ticket_draft,
 )
 
+from app.knowledge_ingestion import build_content_hash
+
 from models import (
     AgentDecision,
     Draft,
@@ -20,6 +22,7 @@ from schemas import (
 
 
 class FakeLLM:
+
     def __init__(self):
         self.calls = []
 
@@ -55,6 +58,7 @@ def test_generate_ticket_draft_with_real_agent_and_retrieval(
     # ---------------------------------------------------------
     # 1. Create the knowledge required by this integration test.
     # ---------------------------------------------------------
+
     embedding_model = EmbeddingModel()
 
     knowledge_text = (
@@ -62,9 +66,18 @@ def test_generate_ticket_draft_with_real_agent_and_retrieval(
         "from your account settings."
     )
 
+    source = "account_access_faq"
+    timestamp = None
+
     knowledge_chunk = KnowledgeChunk(
         content=knowledge_text,
-        source="account_access_faq",
+        source=source,
+        timestamp=timestamp,
+        content_hash=build_content_hash(
+            content=knowledge_text,
+            source=source,
+            timestamp=timestamp,
+        ),
         is_current=True,
         embedding=embedding_model.embed(knowledge_text),
     )
@@ -75,6 +88,7 @@ def test_generate_ticket_draft_with_real_agent_and_retrieval(
     # ---------------------------------------------------------
     # 2. Create the ticket.
     # ---------------------------------------------------------
+
     ticket = Ticket(
         user_id="123",
         user_message="I forgot my password",
@@ -87,12 +101,14 @@ def test_generate_ticket_draft_with_real_agent_and_retrieval(
     # ---------------------------------------------------------
     # 3. Create the fake LLM and real retriever.
     # ---------------------------------------------------------
+
     llm = FakeLLM()
     retriever = KnowledgeRetriever(embedding_model)
 
     # ---------------------------------------------------------
     # 4. Run the real agent + real retrieval pipeline.
     # ---------------------------------------------------------
+
     draft = generate_ticket_draft(
         db=db_session,
         ticket_id=ticket.ticket_id,
@@ -103,6 +119,7 @@ def test_generate_ticket_draft_with_real_agent_and_retrieval(
     # ---------------------------------------------------------
     # 5. Verify generated draft.
     # ---------------------------------------------------------
+
     assert draft is not None
     assert isinstance(draft, Draft)
 
@@ -114,6 +131,7 @@ def test_generate_ticket_draft_with_real_agent_and_retrieval(
     # ---------------------------------------------------------
     # 6. Verify retrieval evidence.
     # ---------------------------------------------------------
+
     assert draft.evidence
     assert "password" in draft.evidence.lower()
     assert "reset" in draft.evidence.lower()
@@ -122,11 +140,13 @@ def test_generate_ticket_draft_with_real_agent_and_retrieval(
     # The agent should make exactly two LLM calls:
     # 1. TOOL_CALL
     # 2. ANSWER
+
     assert len(llm.calls) == 2
 
     # ---------------------------------------------------------
     # 7. Verify the draft was persisted.
     # ---------------------------------------------------------
+
     stored_draft = (
         db_session.query(Draft)
         .filter(Draft.ticket_id == ticket.ticket_id)
@@ -138,6 +158,7 @@ def test_generate_ticket_draft_with_real_agent_and_retrieval(
 
 
 class FakeEscalationAgent:
+
     def __init__(
         self,
         system_prompt,
@@ -186,6 +207,7 @@ def test_agent_escalation_then_reviewer_takeover(
     # ---------------------------------------------------------
     # 1. Agent escalates the ticket.
     # ---------------------------------------------------------
+
     review = generate_ticket_draft(
         db=db_session,
         ticket_id=ticket.ticket_id,
@@ -194,12 +216,16 @@ def test_agent_escalation_then_reviewer_takeover(
     )
 
     assert isinstance(review, Review)
+
     assert review.ticket_id == ticket.ticket_id
+
     assert review.agent_decision == AgentDecision.ESCALATE
+
     assert review.agent_reason == (
         "The available knowledge is insufficient "
         "to answer reliably."
     )
+
     assert review.reviewer_action is None
     assert review.reviewer_identity is None
     assert review.reviewer_reason is None
@@ -211,6 +237,7 @@ def test_agent_escalation_then_reviewer_takeover(
 
     # Escalation also persists the agent's proposed
     # customer-facing answer as a Draft.
+
     stored_draft = (
         db_session.query(Draft)
         .filter(Draft.ticket_id == ticket.ticket_id)
@@ -219,6 +246,7 @@ def test_agent_escalation_then_reviewer_takeover(
 
     assert stored_draft is not None
     assert stored_draft.ticket_id == ticket.ticket_id
+
     assert stored_draft.generated_answer == (
         "I need to transfer you to support."
     )
@@ -226,6 +254,7 @@ def test_agent_escalation_then_reviewer_takeover(
     # ---------------------------------------------------------
     # 2. Reviewer takes over the ticket.
     # ---------------------------------------------------------
+
     updated_ticket, updated_review = apply_reviewer_action(
         db=db_session,
         ticket_id=ticket.ticket_id,
@@ -237,6 +266,7 @@ def test_agent_escalation_then_reviewer_takeover(
     # ---------------------------------------------------------
     # 3. Verify final lifecycle state.
     # ---------------------------------------------------------
+
     assert updated_ticket.ticket_id == ticket.ticket_id
 
     assert (
@@ -263,6 +293,7 @@ def test_agent_escalation_then_reviewer_takeover(
     # ---------------------------------------------------------
     # 4. Verify persisted database state.
     # ---------------------------------------------------------
+
     db_session.refresh(ticket)
     db_session.refresh(review)
 

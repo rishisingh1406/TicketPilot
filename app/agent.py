@@ -1,9 +1,9 @@
 import json
+
 from groq import BadRequestError
 from typing import Any, Callable
 
 from pydantic import BaseModel, ValidationError
-
 from sqlalchemy.orm import Session
 
 from app.retrieval import KnowledgeRetriever
@@ -35,14 +35,15 @@ def search_knowledge(
     The LLM provides only the search query.
     Retrieval policy and database access remain application-owned.
     """
-    print("SEARCH_KNOWLEDGE: starting retrieval")
 
+    print("SEARCH_KNOWLEDGE: starting retrieval")
 
     results = retriever.retrieve_relevant_chunks(
         db=db,
         query=tool_input.query,
         top_k=5,
     )
+
     print("SEARCH_KNOWLEDGE: retrieval completed")
 
     chunks = [
@@ -92,14 +93,9 @@ class Agent:
         self.max_tool_calls = 5
 
         self.llm = llm
-
-        # Database session used by tools that require persistence.
         self.db = db
-
-        # Retrieval dependency used by SEARCH_KNOWLEDGE.
         self.retriever = retriever
 
-        # Tool implementations are injected into the agent.
         self.tool_handlers = tool_handlers or {}
 
         # Latest knowledge retrieved during this agent run.
@@ -132,13 +128,11 @@ class Agent:
 
             if response.action == AgentAction.TOOL_CALL:
 
-                # Check tool-call limit
                 if self.tool_calls >= self.max_tool_calls:
                     raise RuntimeError(
                         "Maximum tool-call limit reached"
                     )
 
-                # Check whether the requested tool is allowed
                 if not self.is_tool_allowed(response.tool):
                     raise RuntimeError(
                         "Requested tool is not allowed"
@@ -194,7 +188,6 @@ class Agent:
                         ),
                     )
 
-                # Continue the agent loop
                 self.iteration += 1
 
             # ----------------------------------------------------
@@ -203,8 +196,6 @@ class Agent:
 
             elif response.action == AgentAction.ANSWER:
 
-                # Attach the latest retrieved evidence to the
-                # final answer returned by the agent.
                 return response.model_copy(
                     update={
                         "retrieved_context": (
@@ -218,12 +209,7 @@ class Agent:
             # ----------------------------------------------------
 
             elif response.action == AgentAction.ESCALATE:
-
                 return self.escalate(response)
-
-        # --------------------------------------------------------
-        # Maximum iteration limit reached
-        # --------------------------------------------------------
 
         raise RuntimeError(
             "Maximum iteration limit reached"
@@ -279,7 +265,7 @@ class Agent:
             )
 
         # --------------------------------------------------------
-        # Find the input schema belonging to the requested tool
+        # Find input schema
         # --------------------------------------------------------
 
         input_model = TOOL_INPUT_MODELS.get(response.tool)
@@ -298,14 +284,13 @@ class Agent:
             validated_input = input_model.model_validate(
                 response.tool_input
             )
-
         except ValidationError as error:
             raise RuntimeError(
                 f"Invalid input for tool {response.tool}"
             ) from error
 
         # --------------------------------------------------------
-        # Find the actual tool implementation
+        # Find actual tool implementation
         # --------------------------------------------------------
 
         tool_handler = self.tool_handlers.get(response.tool)
@@ -321,7 +306,6 @@ class Agent:
         # --------------------------------------------------------
 
         if response.tool == AllowedTool.SEARCH_KNOWLEDGE:
-
             return tool_handler(
                 db=self.db,
                 tool_input=validated_input,
@@ -339,10 +323,6 @@ class Agent:
     # ============================================================
 
     def generate_response(self):
-
-        # ========================================================
-        # Build messages
-        # ========================================================
 
         messages = [
             {
@@ -407,7 +387,6 @@ class Agent:
                 self.previous_tool_calls,
                 self.previous_tool_results,
             ):
-
                 tool_history.append(
                     (
                         "<tool_call>\n"
@@ -441,9 +420,7 @@ class Agent:
         # ========================================================
 
         try:
-
             response = self.call_llm(messages)
-
             return response
 
         except TimeoutError as error:
@@ -468,16 +445,13 @@ class Agent:
             # ====================================================
 
             try:
-
                 response = self.call_llm(messages)
-
                 return response
 
             except (
                 json.JSONDecodeError,
                 ValidationError,
-                BadRequestError
-                
+                BadRequestError,
             ) as second_error:
 
                 return AgentResponse(
@@ -507,11 +481,9 @@ class Agent:
         """
 
         if isinstance(value, BaseModel):
-
             return value.model_dump_json()
 
         try:
-
             return json.dumps(
                 value,
                 default=str,
@@ -521,7 +493,6 @@ class Agent:
             TypeError,
             ValueError,
         ):
-
             return str(value)
 
     # ============================================================
@@ -547,9 +518,12 @@ class Agent:
 
             if tool == AllowedTool.SEARCH_KNOWLEDGE:
 
-                tool_input = {
-                    "query": llm_response.query,
-                }
+                if not llm_response.tool_input:
+                    raise ValueError(
+                        "SEARCH_KNOWLEDGE requires tool_input"
+                    )
+
+                tool_input = llm_response.tool_input
 
             elif tool == AllowedTool.GET_ACCOUNT:
 
@@ -557,9 +531,12 @@ class Agent:
 
             elif tool == AllowedTool.UPDATE_TICKET_STATUS:
 
-                tool_input = {
-                    "status": llm_response.status,
-                }
+                if not llm_response.tool_input:
+                    raise ValueError(
+                        f"{tool} requires tool_input"
+                    )
+
+                tool_input = llm_response.tool_input
 
         # --------------------------------------------------------
         # ANSWER

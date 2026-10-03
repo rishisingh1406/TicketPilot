@@ -1,4 +1,5 @@
 from app.retrieval import KnowledgeRetriever
+from app.knowledge_ingestion import build_content_hash
 from database import SessionLocal
 from models import KnowledgeChunk
 
@@ -8,7 +9,16 @@ def test_retrieve_relevant_chunks(embedding_model):
     retriever = KnowledgeRetriever(embedding_model)
 
     content = "Users can reset their password from the account settings page."
+    source = "account_access_faq"
+    timestamp = None
+
     embedding = embedding_model.embed(content)
+
+    content_hash = build_content_hash(
+        content=content,
+        source=source,
+        timestamp=timestamp,
+    )
 
     print("STEP 2: Creating database session", flush=True)
     db = SessionLocal()
@@ -16,7 +26,9 @@ def test_retrieve_relevant_chunks(embedding_model):
     try:
         chunk = KnowledgeChunk(
             content=content,
-            source="account_access_faq",
+            source=source,
+            timestamp=timestamp,
+            content_hash=content_hash,
             embedding=embedding,
             is_current=True,
         )
@@ -42,8 +54,9 @@ def test_retrieve_relevant_chunks(embedding_model):
         print(f"Distance: {distance}", flush=True)
 
         assert chunk.content == content
-        assert chunk.source == "account_access_faq"
+        assert chunk.source == source
         assert chunk.is_current is True
+        assert chunk.content_hash == content_hash
         assert distance >= 0
 
     finally:
@@ -67,6 +80,7 @@ def test_retriever_rejects_empty_query():
             assert False, "Expected ValueError for empty query"
         except ValueError as exc:
             assert str(exc) == "query must not be empty"
+
     finally:
         db.close()
 
@@ -85,6 +99,7 @@ def test_retriever_rejects_invalid_top_k():
             assert False, "Expected ValueError for top_k <= 0"
         except ValueError as exc:
             assert str(exc) == "top_k must be greater than 0"
+
     finally:
         db.close()
 
@@ -103,5 +118,6 @@ def test_retriever_rejects_excessive_top_k():
             assert False, "Expected ValueError for top_k > 20"
         except ValueError as exc:
             assert str(exc) == "top_k must not exceed 20"
+
     finally:
         db.close()

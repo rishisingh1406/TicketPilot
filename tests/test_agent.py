@@ -417,7 +417,12 @@ def test_agent_executes_tool_on_iteration_five_then_stops():
 
     result = agent.run()
 
-    assert result == "final-tool-result"
+    assert isinstance(result, AgentResponse)
+    assert result.action == AgentAction.ESCALATE
+    assert result.support_message == (
+    "Maximum agent iterations reached."
+)
+
     assert len(calls) == 5
     assert llm.calls == 5
     assert agent.iteration == 5
@@ -461,7 +466,12 @@ def test_agent_stops_when_tool_call_limit_is_reached():
 
     result = agent.run()
 
-    assert result == "result"
+    assert isinstance(result, AgentResponse)
+    assert result.action == AgentAction.ESCALATE
+    assert result.support_message == (
+    "Maximum agent iterations reached."
+)
+
     assert len(calls) == 5
     assert llm.calls == 5
 
