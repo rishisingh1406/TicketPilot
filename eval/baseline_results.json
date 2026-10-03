@@ -1,0 +1,438 @@
+[
+  {
+    "case_id": "TP-001",
+    "expected_action": "ANSWER",
+    "actual_action": "ANSWER",
+    "structured_output_valid": true,
+    "expected_sources": [
+      "account_access_faq"
+    ],
+    "actual_sources": [
+      "account_access_faq",
+      "security_mfa_guide"
+    ],
+    "citation_correct": true,
+    "latency_ms": 1756.497099995613,
+    "error": null
+  },
+  {
+    "case_id": "TP-002",
+    "expected_action": "ANSWER",
+    "actual_action": "ANSWER",
+    "structured_output_valid": true,
+    "expected_sources": [
+      "account_access_faq"
+    ],
+    "actual_sources": [
+      "account_access_faq",
+      "billing_policy"
+    ],
+    "citation_correct": true,
+    "latency_ms": 1556.1423000181094,
+    "error": null
+  },
+  {
+    "case_id": "TP-003",
+    "expected_action": "ANSWER",
+    "actual_action": "ANSWER",
+    "structured_output_valid": true,
+    "expected_sources": [
+      "account_access_faq"
+    ],
+    "actual_sources": [
+      "account_access_faq",
+      "security_mfa_guide"
+    ],
+    "citation_correct": true,
+    "latency_ms": 7628.138000000035,
+    "error": null
+  },
+  {
+    "case_id": "TP-004",
+    "expected_action": "ANSWER",
+    "actual_action": "ANSWER",
+    "structured_output_valid": true,
+    "expected_sources": [
+      "account_access_faq"
+    ],
+    "actual_sources": [
+      "account_access_faq",
+      "security_mfa_guide"
+    ],
+    "citation_correct": true,
+    "latency_ms": 22766.13350000116,
+    "error": null
+  },
+  {
+    "case_id": "TP-005",
+    "expected_action": "ANSWER",
+    "actual_action": "ANSWER",
+    "structured_output_valid": true,
+    "expected_sources": [
+      "security_mfa_guide"
+    ],
+    "actual_sources": [
+      "security_mfa_guide",
+      "api_usage_policy"
+    ],
+    "citation_correct": true,
+    "latency_ms": 28369.095100002596,
+    "error": null
+  },
+  {
+    "case_id": "TP-006",
+    "expected_action": "ANSWER",
+    "actual_action": "ANSWER",
+    "structured_output_valid": true,
+    "expected_sources": [
+      "security_mfa_guide"
+    ],
+    "actual_sources": [
+      "security_mfa_guide",
+      "account_access_faq"
+    ],
+    "citation_correct": true,
+    "latency_ms": 22719.197099999292,
+    "error": null
+  },
+  {
+    "case_id": "TP-007",
+    "expected_action": "ANSWER",
+    "actual_action": "ANSWER",
+    "structured_output_valid": true,
+    "expected_sources": [
+      "billing_policy"
+    ],
+    "actual_sources": [
+      "billing_policy"
+    ],
+    "citation_correct": true,
+    "latency_ms": 23026.473900012206,
+    "error": null
+  },
+  {
+    "case_id": "TP-008",
+    "expected_action": "ANSWER",
+    "actual_action": "ANSWER",
+    "structured_output_valid": true,
+    "expected_sources": [
+      "billing_policy"
+    ],
+    "actual_sources": [
+      "billing_policy",
+      "subscription_management"
+    ],
+    "citation_correct": true,
+    "latency_ms": 22256.003099988448,
+    "error": null
+  },
+  {
+    "case_id": "TP-009",
+    "expected_action": "ANSWER",
+    "actual_action": "ANSWER",
+    "structured_output_valid": true,
+    "expected_sources": [
+      "billing_policy"
+    ],
+    "actual_sources": [
+      "billing_policy"
+    ],
+    "citation_correct": true,
+    "latency_ms": 22605.68440001225,
+    "error": null
+  },
+  {
+    "case_id": "TP-010",
+    "expected_action": "ANSWER",
+    "actual_action": "ANSWER",
+    "structured_output_valid": true,
+    "expected_sources": [
+      "billing_policy"
+    ],
+    "actual_sources": [
+      "billing_policy"
+    ],
+    "citation_correct": true,
+    "latency_ms": 22815.415099990787,
+    "error": null
+  },
+  {
+    "case_id": "TP-011",
+    "expected_action": "ANSWER",
+    "actual_action": "ESCALATE",
+    "structured_output_valid": true,
+    "expected_sources": [
+      "billing_policy"
+    ],
+    "actual_sources": [],
+    "citation_correct": false,
+    "latency_ms": 46198.95280001219,
+    "error": null
+  },
+  {
+    "case_id": "TP-012",
+    "expected_action": "ANSWER",
+    "actual_action": "ANSWER",
+    "structured_output_valid": true,
+    "expected_sources": [
+      "billing_policy"
+    ],
+    "actual_sources": [
+      "billing_policy",
+      "subscription_management"
+    ],
+    "citation_correct": true,
+    "latency_ms": 22411.836600018432,
+    "error": null
+  },
+  {
+    "case_id": "TP-013",
+    "expected_action": "ANSWER",
+    "actual_action": "ANSWER",
+    "structured_output_valid": true,
+    "expected_sources": [
+      "subscription_management"
+    ],
+    "actual_sources": [
+      "subscription_management",
+      "billing_policy"
+    ],
+    "citation_correct": true,
+    "latency_ms": 22220.010499993805,
+    "error": null
+  },
+  {
+    "case_id": "TP-014",
+    "expected_action": "ANSWER",
+    "actual_action": "ANSWER",
+    "structured_output_valid": true,
+    "expected_sources": [
+      "subscription_management"
+    ],
+    "actual_sources": [
+      "subscription_management",
+      "api_usage_policy"
+    ],
+    "citation_correct": true,
+    "latency_ms": 22427.419099985855,
+    "error": null
+  },
+  {
+    "case_id": "TP-015",
+    "expected_action": "ANSWER",
+    "actual_action": "ANSWER",
+    "structured_output_valid": true,
+    "expected_sources": [
+      "subscription_management"
+    ],
+    "actual_sources": [
+      "subscription_management",
+      "billing_policy"
+    ],
+    "citation_correct": true,
+    "latency_ms": 22564.08400001237,
+    "error": null
+  },
+  {
+    "case_id": "TP-016",
+    "expected_action": "ANSWER",
+    "actual_action": "ANSWER",
+    "structured_output_valid": true,
+    "expected_sources": [
+      "api_usage_policy"
+    ],
+    "actual_sources": [
+      "api_usage_policy",
+      "account_access_faq",
+      "security_mfa_guide"
+    ],
+    "citation_correct": true,
+    "latency_ms": 22799.729400023352,
+    "error": null
+  },
+  {
+    "case_id": "TP-017",
+    "expected_action": "ANSWER",
+    "actual_action": "ANSWER",
+    "structured_output_valid": true,
+    "expected_sources": [
+      "api_usage_policy"
+    ],
+    "actual_sources": [
+      "api_usage_policy",
+      "data_privacy_policy"
+    ],
+    "citation_correct": true,
+    "latency_ms": 22747.142200008966,
+    "error": null
+  },
+  {
+    "case_id": "TP-018",
+    "expected_action": "ANSWER",
+    "actual_action": "ANSWER",
+    "structured_output_valid": true,
+    "expected_sources": [
+      "api_usage_policy"
+    ],
+    "actual_sources": [
+      "api_usage_policy",
+      "billing_policy"
+    ],
+    "citation_correct": true,
+    "latency_ms": 23680.394099996192,
+    "error": null
+  },
+  {
+    "case_id": "TP-019",
+    "expected_action": "ANSWER",
+    "actual_action": "ANSWER",
+    "structured_output_valid": true,
+    "expected_sources": [
+      "data_privacy_policy"
+    ],
+    "actual_sources": [
+      "data_privacy_policy",
+      "billing_policy"
+    ],
+    "citation_correct": true,
+    "latency_ms": 39179.880500014406,
+    "error": null
+  },
+  {
+    "case_id": "TP-020",
+    "expected_action": "ANSWER",
+    "actual_action": "ANSWER",
+    "structured_output_valid": true,
+    "expected_sources": [
+      "data_privacy_policy"
+    ],
+    "actual_sources": [
+      "data_privacy_policy",
+      "subscription_management",
+      "security_mfa_guide"
+    ],
+    "citation_correct": true,
+    "latency_ms": 21502.959599980386,
+    "error": null
+  },
+  {
+    "case_id": "TP-021",
+    "expected_action": "ESCALATE",
+    "actual_action": "ESCALATE",
+    "structured_output_valid": true,
+    "expected_sources": [
+      "billing_policy"
+    ],
+    "actual_sources": [],
+    "citation_correct": false,
+    "latency_ms": 24065.421500010416,
+    "error": null
+  },
+  {
+    "case_id": "TP-022",
+    "expected_action": "ESCALATE",
+    "actual_action": "ESCALATE",
+    "structured_output_valid": true,
+    "expected_sources": [
+      "security_mfa_guide"
+    ],
+    "actual_sources": [],
+    "citation_correct": false,
+    "latency_ms": 22938.940699998057,
+    "error": null
+  },
+  {
+    "case_id": "TP-023",
+    "expected_action": "ESCALATE",
+    "actual_action": "ESCALATE",
+    "structured_output_valid": true,
+    "expected_sources": [
+      "account_access_faq"
+    ],
+    "actual_sources": [],
+    "citation_correct": false,
+    "latency_ms": 22963.49480000208,
+    "error": null
+  },
+  {
+    "case_id": "TP-024",
+    "expected_action": "ESCALATE",
+    "actual_action": "ESCALATE",
+    "structured_output_valid": true,
+    "expected_sources": [
+      "billing_policy"
+    ],
+    "actual_sources": [],
+    "citation_correct": false,
+    "latency_ms": 21887.741999991704,
+    "error": null
+  },
+  {
+    "case_id": "TP-025",
+    "expected_action": "ESCALATE",
+    "actual_action": "ESCALATE",
+    "structured_output_valid": true,
+    "expected_sources": [
+      "billing_policy"
+    ],
+    "actual_sources": [],
+    "citation_correct": false,
+    "latency_ms": 5953.990500012878,
+    "error": null
+  },
+  {
+    "case_id": "TP-026",
+    "expected_action": "ESCALATE",
+    "actual_action": "ESCALATE",
+    "structured_output_valid": true,
+    "expected_sources": [],
+    "actual_sources": [],
+    "citation_correct": null,
+    "latency_ms": 7051.854000019375,
+    "error": null
+  },
+  {
+    "case_id": "TP-027",
+    "expected_action": "ESCALATE",
+    "actual_action": "ANSWER",
+    "structured_output_valid": true,
+    "expected_sources": [],
+    "actual_sources": [],
+    "citation_correct": null,
+    "latency_ms": 6965.046900004381,
+    "error": null
+  },
+  {
+    "case_id": "TP-028",
+    "expected_action": "ESCALATE",
+    "actual_action": "ESCALATE",
+    "structured_output_valid": true,
+    "expected_sources": [],
+    "actual_sources": [],
+    "citation_correct": null,
+    "latency_ms": 5935.77060001553,
+    "error": null
+  },
+  {
+    "case_id": "TP-029",
+    "expected_action": "ESCALATE",
+    "actual_action": "ESCALATE",
+    "structured_output_valid": true,
+    "expected_sources": [],
+    "actual_sources": [],
+    "citation_correct": null,
+    "latency_ms": 22964.80139999767,
+    "error": null
+  },
+  {
+    "case_id": "TP-030",
+    "expected_action": "ESCALATE",
+    "actual_action": "ESCALATE",
+    "structured_output_valid": true,
+    "expected_sources": [],
+    "actual_sources": [],
+    "citation_correct": null,
+    "latency_ms": 23321.304899989627,
+    "error": null
+  }
+]

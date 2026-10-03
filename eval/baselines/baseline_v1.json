@@ -1,0 +1,24 @@
+{
+  "baseline": "v1",
+  "dataset": {
+    "name": "golden_set",
+    "cases": 30
+  },
+  "metrics": {
+    "action_accuracy": 0.9333,
+    "structured_output_validity": 1.0,
+    "citation_correctness": 0.76,
+    "escalation_precision": 0.90,
+    "escalation_recall": 0.90,
+    "average_latency_ms": 20176,
+    "p95_latency_ms": 39180,
+    "errors": 0
+  },
+  "limitations": [
+    "Citation metric measures expected source presence, not citation faithfulness",
+    "Answer completeness is not measured",
+    "Cost per ticket is not measured",
+    "Knowledge base contains duplicate seeded chunks",
+    "Some responses were truncated despite structured output being valid"
+  ]
+}
