@@ -26,6 +26,7 @@ tickets
 """
 
 from enum import Enum
+import hashlib
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
@@ -186,18 +187,18 @@ class Audit(Base):
 class KnowledgeChunk(Base):
     __tablename__ = "knowledge_chunks"
 
-    chunk_id: int = Column(
+    chunk_id = Column(
         Integer,
         primary_key=True,
         autoincrement=True,
     )
 
-    content: str = Column(
+    content = Column(
         Text,
         nullable=False,
     )
 
-    source: str = Column(
+    source = Column(
         String,
         nullable=False,
     )
@@ -207,10 +208,16 @@ class KnowledgeChunk(Base):
         nullable=True,
     )
 
-    is_current: bool = Column(
+    is_current = Column(
         Boolean,
         nullable=False,
         default=True,
+    )
+
+    content_hash = Column(
+        String,
+        nullable=False,
+        unique=True,
     )
 
     embedding = Column(

@@ -11,7 +11,7 @@ from eval.llm_factory import create_llm
 with open("eval/golden_set.json", "r", encoding="utf-8") as file:
     cases = json.load(file)
 
-case = next(case for case in cases if case["id"] == "TP-001")
+case = next(case for case in cases if case["id"] == "TP-017")
 
 db = SessionLocal()
 

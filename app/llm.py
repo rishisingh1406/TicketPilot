@@ -1,5 +1,6 @@
 import json
 
+from django.http import response
 from groq import Groq
 
 from schemas import AgentLLMResponse
@@ -26,7 +27,8 @@ class GroqLLM:
                 },
             },
         )
-
+        print("FINISH REASON:", response.choices[0].finish_reason)
+        print("USAGE:", response.usage)
         content = response.choices[0].message.content
 
         data = json.loads(content)
