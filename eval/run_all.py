@@ -4,6 +4,7 @@ from app.embeddings import EmbeddingModel
 from app.retrieval import KnowledgeRetriever
 from database import SessionLocal
 
+from eval.citation_judge import CitationFaithfulnessJudge
 from eval.evaluator import evaluate_case
 from eval.llm_factory import create_llm
 
@@ -17,6 +18,11 @@ def main():
     embedding_model = EmbeddingModel()
     retriever = KnowledgeRetriever(embedding_model)
     llm = create_llm()
+
+    citation_judge = CitationFaithfulnessJudge(
+        api_key=llm.client.api_key,
+        model=llm.model,
+    )
 
     results = []
 
@@ -34,6 +40,7 @@ def main():
                 llm=llm,
                 db=db,
                 retriever=retriever,
+                citation_judge=citation_judge,
             )
 
             results.append(result)
@@ -75,6 +82,30 @@ def main():
         if result.citation_correct
     )
 
+    faithfulness_cases = [
+        result
+        for result in results
+        if result.citation_faithfulness is not None
+    ]
+
+    faithfulness_supported = sum(
+        1
+        for result in faithfulness_cases
+        if result.citation_faithfulness.value == "SUPPORTED"
+    )
+
+    faithfulness_partial = sum(
+        1
+        for result in faithfulness_cases
+        if result.citation_faithfulness.value == "PARTIALLY_SUPPORTED"
+    )
+
+    faithfulness_unsupported = sum(
+        1
+        for result in faithfulness_cases
+        if result.citation_faithfulness.value == "UNSUPPORTED"
+    )
+
     expected_escalations = sum(
         1
         for result in results
@@ -84,8 +115,10 @@ def main():
     actual_escalations = sum(
         1
         for result in results
-        if result.actual_action is not None
-        and result.actual_action.value == "ESCALATE"
+        if (
+            result.actual_action is not None
+            and result.actual_action.value == "ESCALATE"
+        )
     )
 
     true_positive_escalations = sum(
@@ -134,15 +167,32 @@ def main():
         if result.error is not None
     ]
 
+    total_production_cost = sum(
+        result.cost_usd
+        for result in results
+    )
+
+    total_judge_cost = sum(
+        result.judge_cost_usd
+        for result in results
+    )
+
+    total_cost = (
+        total_production_cost
+        + total_judge_cost
+    )
+
     print("\n" + "=" * 60)
     print("TICKETPILOT EVALUATION BASELINE")
     print("=" * 60)
 
     print(f"Total cases:              {total}")
+
     print(
         f"Action accuracy:          "
         f"{action_correct / total:.2%}"
     )
+
     print(
         f"Structured output valid:  "
         f"{structured_valid / total:.2%}"
@@ -155,6 +205,25 @@ def main():
         )
     else:
         print("Citation correctness:     N/A")
+
+    if faithfulness_cases:
+        print(
+            f"Citation faithfulness:    "
+            f"{faithfulness_supported / len(faithfulness_cases):.2%} "
+            f"SUPPORTED"
+        )
+
+        print(
+            f"  Partially supported:    "
+            f"{faithfulness_partial}"
+        )
+
+        print(
+            f"  Unsupported:            "
+            f"{faithfulness_unsupported}"
+        )
+    else:
+        print("Citation faithfulness:    N/A")
 
     print(
         f"Escalation precision:     "
@@ -180,10 +249,26 @@ def main():
         f"{p95_latency:.0f} ms"
     )
 
+    print(
+        f"Production cost:          "
+        f"${total_production_cost:.4f}"
+    )
+
+    print(
+        f"Judge cost:               "
+        f"${total_judge_cost:.4f}"
+    )
+
+    print(
+        f"Total evaluation cost:    "
+        f"${total_cost:.4f}"
+    )
+
     print(f"Errors:                   {len(errors)}")
 
     if errors:
         print("\nFailed cases:")
+
         for result in errors:
             print(
                 f"- {result.case_id}: "
@@ -198,7 +283,10 @@ def main():
         encoding="utf-8",
     ) as file:
         json.dump(
-            [result.model_dump(mode="json") for result in results],
+            [
+                result.model_dump(mode="json")
+                for result in results
+            ],
             file,
             indent=2,
         )

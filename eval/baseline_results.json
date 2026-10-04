@@ -9,10 +9,24 @@
     ],
     "actual_sources": [
       "account_access_faq",
-      "security_mfa_guide"
+      "security_mfa_guide",
+      "data_privacy_policy"
     ],
     "citation_correct": true,
-    "latency_ms": 1756.497099995613,
+    "citation_faithfulness": "SUPPORTED",
+    "citation_judge_reason": "The generated answer states that password reset links are valid for 60 minutes, can only be used once, and that users should request a new link if it expires or check spam if they don't receive one. All these specific details are explicitly supported by the provided evidence from 'account_access_faq'.",
+    "citation_judge_unsupported_claims": [],
+    "latency_ms": 1940.0005000061356,
+    "llm_calls": 2,
+    "prompt_tokens": 2665,
+    "completion_tokens": 181,
+    "total_tokens": 2846,
+    "cost_usd": 0.002856,
+    "judge_llm_calls": 1,
+    "judge_prompt_tokens": 1334,
+    "judge_completion_tokens": 82,
+    "judge_total_tokens": 1416,
+    "judge_cost_usd": 0.0013951999999999999,
     "error": null
   },
   {
@@ -25,10 +39,25 @@
     ],
     "actual_sources": [
       "account_access_faq",
-      "billing_policy"
+      "billing_policy",
+      "security_mfa_guide",
+      "api_usage_policy"
     ],
     "citation_correct": true,
-    "latency_ms": 1556.1423000181094,
+    "citation_faithfulness": "SUPPORTED",
+    "citation_judge_reason": "All factual claims in the generated answer are directly supported by the retrieved evidence from 'account_access_faq'. The 30-minute auto-unlock time, the option to reset the password for immediate access, the process of using 'Forgot password', the 60-minute validity and single-use nature of the reset link, and the advice to check spam folders are all explicitly stated in the source text. The generation does not introduce unsupported or conflicting information.",
+    "citation_judge_unsupported_claims": [],
+    "latency_ms": 1256.7435000091791,
+    "llm_calls": 2,
+    "prompt_tokens": 2674,
+    "completion_tokens": 183,
+    "total_tokens": 2857,
+    "cost_usd": 0.0028712000000000004,
+    "judge_llm_calls": 1,
+    "judge_prompt_tokens": 1344,
+    "judge_completion_tokens": 110,
+    "judge_total_tokens": 1454,
+    "judge_cost_usd": 0.0015152,
     "error": null
   },
   {
@@ -41,10 +70,24 @@
     ],
     "actual_sources": [
       "account_access_faq",
-      "security_mfa_guide"
+      "security_mfa_guide",
+      "api_usage_policy"
     ],
     "citation_correct": true,
-    "latency_ms": 7628.138000000035,
+    "citation_faithfulness": "SUPPORTED",
+    "citation_judge_reason": "The generated answer provides correct advice that is fully supported by the retrieved evidence. Specifically, 'account_access_faq' states that if unauthorized access is suspected, the user should change their password and enable multi-factor authentication. The specific steps for resetting a password ('Forgot password' link) are supported by 'account_access_faq'. The recommendation to enable MFA via 'Account Settings > Security > Two-Factor Authentication' and the advice to use a",
+    "citation_judge_unsupported_claims": [],
+    "latency_ms": 22584.930899960455,
+    "llm_calls": 2,
+    "prompt_tokens": 2647,
+    "completion_tokens": 190,
+    "total_tokens": 2837,
+    "cost_usd": 0.0028776,
+    "judge_llm_calls": 1,
+    "judge_prompt_tokens": 1333,
+    "judge_completion_tokens": 110,
+    "judge_total_tokens": 1443,
+    "judge_cost_usd": 0.0015064000000000002,
     "error": null
   },
   {
@@ -60,7 +103,20 @@
       "security_mfa_guide"
     ],
     "citation_correct": true,
-    "latency_ms": 22766.13350000116,
+    "citation_faithfulness": "SUPPORTED",
+    "citation_judge_reason": "The generated answer accurately reflects the procedure and policy stated in the first source. It correctly identifies the navigation path, the verification process, and the status of the old email address during the transition period. The final note, though cut off, begins to describe the scenario where self-service is not possible, which aligns with the source's instruction to contact support in that case.",
+    "citation_judge_unsupported_claims": [],
+    "latency_ms": 23513.55059997877,
+    "llm_calls": 2,
+    "prompt_tokens": 2648,
+    "completion_tokens": 189,
+    "total_tokens": 2837,
+    "cost_usd": 0.0028744000000000005,
+    "judge_llm_calls": 1,
+    "judge_prompt_tokens": 1324,
+    "judge_completion_tokens": 94,
+    "judge_total_tokens": 1418,
+    "judge_cost_usd": 0.0014352000000000002,
     "error": null
   },
   {
@@ -73,27 +129,51 @@
     ],
     "actual_sources": [
       "security_mfa_guide",
-      "api_usage_policy"
+      "api_usage_policy",
+      "account_access_faq"
     ],
     "citation_correct": true,
-    "latency_ms": 28369.095100002596,
+    "citation_faithfulness": "SUPPORTED",
+    "citation_judge_reason": "Each material claim in the answer (location to enable MFA, supported methods TOTP/SMS, recommendation for authenticator app over SMS due to SIM-swapping, and provision of one-time backup recovery codes during setup) is explicitly stated in the retrieved security_mfa_guide evidence.",
+    "citation_judge_unsupported_claims": [],
+    "latency_ms": 22834.976699959952,
+    "llm_calls": 2,
+    "prompt_tokens": 2644,
+    "completion_tokens": 187,
+    "total_tokens": 2831,
+    "cost_usd": 0.0028632,
+    "judge_llm_calls": 1,
+    "judge_prompt_tokens": 1326,
+    "judge_completion_tokens": 76,
+    "judge_total_tokens": 1402,
+    "judge_cost_usd": 0.0013648,
     "error": null
   },
   {
     "case_id": "TP-006",
     "expected_action": "ANSWER",
-    "actual_action": "ANSWER",
-    "structured_output_valid": true,
+    "actual_action": null,
+    "structured_output_valid": false,
     "expected_sources": [
       "security_mfa_guide"
     ],
-    "actual_sources": [
-      "security_mfa_guide",
-      "account_access_faq"
-    ],
-    "citation_correct": true,
-    "latency_ms": 22719.197099999292,
-    "error": null
+    "actual_sources": [],
+    "citation_correct": null,
+    "citation_faithfulness": null,
+    "citation_judge_reason": null,
+    "citation_judge_unsupported_claims": [],
+    "latency_ms": 34050.357099971734,
+    "llm_calls": 2,
+    "prompt_tokens": 2633,
+    "completion_tokens": 189,
+    "total_tokens": 2822,
+    "cost_usd": 0.0028624,
+    "judge_llm_calls": 0,
+    "judge_prompt_tokens": 0,
+    "judge_completion_tokens": 0,
+    "judge_total_tokens": 0,
+    "judge_cost_usd": 0.0,
+    "error": "BadRequestError: Error code: 400 - {'error': {'message': \"Failed to generate JSON. Please adjust your prompt. See 'failed_generation' for more details.\", 'type': 'invalid_request_error', 'code': 'json_validate_failed', 'failed_generation': '{\"reason\": \"The generated answer accurately describes the one-time codes as backup recovery codes used to regain access if the primary 2FA method is lost, which aligns with Source 1 (security_mfa_guide). It correctly advises storing them somewhere safe outside the account, as recommended in the same source. The answer implies that losing both the device and the codes prevents self-service recovery, which is consistent with Source 2, stating that self-service recovery is not possible in that ursa \u0e08\u0e36\u0e07\u0e43\u0e14\u0e41\u0e21\u0e49\u0e02\u0e2d\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e40\u0e1e\u0e34\u0e48\u0e21\u0e40\u0e15\u0e34\u0e21 \u0e08\u0e36\u0e07\u0e43\u0e14\u0e41\u0e21\u0e49\u0e02\u0e2d\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e40\u0e1e\u0e34\u0e48\u0e21\u0e40\u0e15\u0e34\u0e21 \u0e08\u0e36\u0e07\u0e43\u0e14\u0e41\u0e21\u0e49\u0e02\u0e2d\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e40\u0e1e\u0e34\u0e48\u0e21\u0e40\u0e15\u0e34\u0e21 \u0e08\u0e36\u0e07\u0e43\u0e14\u0e41\u0e21\u0e49\u0e02\u0e2d\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e40\u0e1e\u0e34\u0e48\u0e21\u0e40\u0e15\u0e34\u0e21 \u0e08\u0e36\u0e07\u0e43\u0e14\u0e41\u0e21\u0e49\u0e02\u0e2d\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e40\u0e1e\u0e34\u0e48\u0e21\u0e40\u0e15\u0e34\u0e21 \u0e08\u0e36\u0e07\u0e43\u0e14\u0e41\u0e21\u0e49\u0e02\u0e2d\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e40\u0e1e\u0e34\u0e48\u0e21\u0e40\u0e15\u0e34\u0e21 \u0e08\u0e36\u0e07\u0e43\u0e14\u0e41\u0e21\u0e49\u0e02\u0e2d\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e40\u0e1e\u0e34\u0e48\u0e21\u0e40\u0e15\u0e34\u0e21 \u0e08\u0e36\u0e07\u0e43\u0e14\u0e41\u0e21\u0e49\u0e02\u0e2d\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e40\u0e1e\u0e34\u0e48\u0e21\u0e40\u0e15\u0e34\u0e21 \u0e08\u0e36\u0e07\u0e43\u0e14\u0e41\u0e21\u0e49\u0e02\u0e2d\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e40\u0e1e\u0e34\u0e48\u0e21\u0e40\u0e15\u0e34\u0e21 \u0e08\u0e36\u0e07\u0e43\u0e14\u0e41\u0e21\u0e49\u0e02\u0e2d\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e40\u0e1e\u0e34\u0e48\u0e21\u0e40\u0e15\u0e34\u0e21 \u0e08\u0e36\u0e07\u0e43\u0e14\u0e41\u0e21\u0e49\u0e02\u0e2d\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e40\u0e1e\u0e34\u0e48\u0e21\u0e40\u0e15\u0e34\u0e21 \u0e08\u0e36\u0e07\u0e43\u0e14\u0e41\u0e21\u0e49\u0e02\u0e2d\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e40\u0e1e\u0e34\u0e48\u0e21\u0e40\u0e15\u0e34\u0e21 \u0e08\u0e36\u0e07\u0e43\u0e14\u0e41\u0e21\u0e49\u0e02\u0e2d\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e40\u0e1e\u0e34\u0e48\u0e21\u0e40\u0e15\u0e34\u0e21 \u0e08\u0e36\u0e07\u0e43\u0e14\u0e41\u0e21\u0e49\u0e02\u0e2d\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e40\u0e1e\u0e34\u0e48\u0e21\u0e40\u0e15\u0e34\u0e21 \u0e08\u0e36\u0e07\u0e43\u0e14\u0e41\u0e21\u0e49\u0e02\u0e2d\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e40\u0e1e\u0e34\u0e48\u0e21\u0e40\u0e15\u0e34\u0e21 \u0e08\u0e36\u0e07\u0e43\u0e14\u0e41\u0e21\u0e49\u0e02\u0e2d\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e40\u0e1e\u0e34\u0e48\u0e21\u0e40\u0e15\u0e34\u0e21 \u0e08\u0e36\u0e07\u0e43\u0e14\u0e41\u0e21\u0e49\u0e02\u0e2d\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e40\u0e1e\u0e34\u0e48\u0e21\u0e40\u0e15\u0e34\u0e21 \u0e08\u0e36\u0e07\u0e43\u0e14\u0e41\u0e21\u0e49\u0e02\u0e2d\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e40\u0e1e\u0e34\u0e48\u0e21\u0e40\u0e15\u0e34\u0e21 \u0e08\u0e36\u0e07\u0e43\u0e14\u0e41\u0e21\u0e49\u0e02\u0e2d\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e40\u0e1e\u0e34\u0e48\u0e21\u0e40\u0e15\u0e34\u0e21 \u0e08\u0e36\u0e07\u0e43\u0e14\u0e41\u0e21\u0e49\u0e02\u0e2d\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e40\u0e1e\u0e34\u0e48\u0e21\u0e40\u0e15\u0e34\u0e21 \u0e08\u0e36\u0e07\u0e43\u0e14\u0e41\u0e21\u0e49\u0e02\u0e2d\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e40\u0e1e\u0e34\u0e48\u0e21\u0e40\u0e15\u0e34\u0e21 \u0e08\u0e36\u0e07\u0e43\u0e14\u0e41\u0e21\u0e49\u0e02\u0e2d\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e40\u0e1e\u0e34\u0e48\u0e21\u0e40\u0e15\u0e34\u0e21 \u0e08\u0e36\u0e07\u0e43\u0e14\u0e41\u0e21\u0e49\u0e02\u0e2d\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e40\u0e1e\u0e34\u0e48\u0e21\u0e40\u0e15\u0e34\u0e21 \u0e08\u0e36\u0e07\u0e43\u0e14\u0e41\u0e21\u0e49'}}"
   },
   {
     "case_id": "TP-007",
@@ -104,10 +184,25 @@
       "billing_policy"
     ],
     "actual_sources": [
-      "billing_policy"
+      "billing_policy",
+      "subscription_management",
+      "data_privacy_policy"
     ],
     "citation_correct": true,
-    "latency_ms": 23026.473900012206,
+    "citation_faithfulness": "SUPPORTED",
+    "citation_judge_reason": "The generated answer correctly states that PDF invoices can be downloaded from Account Settings > Billing > Invoice History and that they do not expire (retained for the life of the account). Both claims are fully supported by the first retrieved source snippet from billing_policy.",
+    "citation_judge_unsupported_claims": [],
+    "latency_ms": 38067.52059998689,
+    "llm_calls": 2,
+    "prompt_tokens": 2621,
+    "completion_tokens": 127,
+    "total_tokens": 2748,
+    "cost_usd": 0.0026048,
+    "judge_llm_calls": 1,
+    "judge_prompt_tokens": 1251,
+    "judge_completion_tokens": 70,
+    "judge_total_tokens": 1321,
+    "judge_cost_usd": 0.0012808,
     "error": null
   },
   {
@@ -123,7 +218,22 @@
       "subscription_management"
     ],
     "citation_correct": true,
-    "latency_ms": 22256.003099988448,
+    "citation_faithfulness": "PARTIALLY_SUPPORTED",
+    "citation_judge_reason": "The generated answer correctly states that past invoices cannot be edited and provides the correct steps to update billing details (Account Settings > Billing) for future invoices, which aligns with the first retrieved evidence source. However, the answer mentions updating the 'tax ID', while the provided evidence only explicitly mentions correcting the 'company name' when providing examples of what needs to be updated before the next renewal. Although tax IDs are often included,",
+    "citation_judge_unsupported_claims": [
+      "Update your Company Name (and tax ID, if applicable) in your billing profile."
+    ],
+    "latency_ms": 22718.891599972267,
+    "llm_calls": 2,
+    "prompt_tokens": 2647,
+    "completion_tokens": 190,
+    "total_tokens": 2837,
+    "cost_usd": 0.0028776,
+    "judge_llm_calls": 1,
+    "judge_prompt_tokens": 1317,
+    "judge_completion_tokens": 126,
+    "judge_total_tokens": 1443,
+    "judge_cost_usd": 0.0015576000000000001,
     "error": null
   },
   {
@@ -135,10 +245,25 @@
       "billing_policy"
     ],
     "actual_sources": [
-      "billing_policy"
+      "billing_policy",
+      "security_mfa_guide",
+      "subscription_management"
     ],
     "citation_correct": true,
-    "latency_ms": 22605.68440001225,
+    "citation_faithfulness": "PARTIALLY_SUPPORTED",
+    "citation_judge_reason": "The first and second bullet points of the generated answer are supported by the retrieved evidence regarding the retry policy and status. However, the third bullet point incorrectly states that the card remains valid and suggests cancelling at the next billing period rather than restricting the account immediately. The evidence explicitly states that if all retries fail within 7 days, the account is switched to a restricted mode where most features are disabled. Therefore, the 33",
+    "citation_judge_unsupported_claims": [],
+    "latency_ms": 22013.74190003844,
+    "llm_calls": 2,
+    "prompt_tokens": 2614,
+    "completion_tokens": 176,
+    "total_tokens": 2790,
+    "cost_usd": 0.0027952000000000003,
+    "judge_llm_calls": 1,
+    "judge_prompt_tokens": 1285,
+    "judge_completion_tokens": 108,
+    "judge_total_tokens": 1393,
+    "judge_cost_usd": 0.00146,
     "error": null
   },
   {
@@ -150,23 +275,53 @@
       "billing_policy"
     ],
     "actual_sources": [
-      "billing_policy"
+      "billing_policy",
+      "api_usage_policy"
     ],
     "citation_correct": true,
-    "latency_ms": 22815.415099990787,
+    "citation_faithfulness": "SUPPORTED",
+    "citation_judge_reason": "The generated answer's claims are a direct subset of the information found in the first retrieved source (billing_policy). The source explicitly states that one entry is often a temporary authorization hold used to verify the card, and that it is automatically released within 5 to 7 business days without any action needed. The generated answer accurately reflects these details.",
+    "citation_judge_unsupported_claims": [],
+    "latency_ms": 23040.54149996955,
+    "llm_calls": 2,
+    "prompt_tokens": 2676,
+    "completion_tokens": 189,
+    "total_tokens": 2865,
+    "cost_usd": 0.0028968,
+    "judge_llm_calls": 1,
+    "judge_prompt_tokens": 1352,
+    "judge_completion_tokens": 88,
+    "judge_total_tokens": 1440,
+    "judge_cost_usd": 0.0014336000000000002,
     "error": null
   },
   {
     "case_id": "TP-011",
     "expected_action": "ANSWER",
-    "actual_action": "ESCALATE",
+    "actual_action": "ANSWER",
     "structured_output_valid": true,
     "expected_sources": [
       "billing_policy"
     ],
-    "actual_sources": [],
-    "citation_correct": false,
-    "latency_ms": 46198.95280001219,
+    "actual_sources": [
+      "billing_policy",
+      "subscription_management"
+    ],
+    "citation_correct": true,
+    "citation_faithfulness": "SUPPORTED",
+    "citation_judge_reason": "The generated answer accurately reflects the retrieved evidence regarding AcmeCloud's refund policy. It correctly states that annual plans have a 14-day refund window (correcting the user's 30-day claim), monthly plans are generally non-refundable except for billing errors, and refunds require manual review rather than being automatic. All material claims are supported by the 'billing_policy' source.",
+    "citation_judge_unsupported_claims": [],
+    "latency_ms": 23062.09740001941,
+    "llm_calls": 2,
+    "prompt_tokens": 2669,
+    "completion_tokens": 206,
+    "total_tokens": 2875,
+    "cost_usd": 0.0029592,
+    "judge_llm_calls": 1,
+    "judge_prompt_tokens": 1332,
+    "judge_completion_tokens": 98,
+    "judge_total_tokens": 1430,
+    "judge_cost_usd": 0.0014576,
     "error": null
   },
   {
@@ -182,7 +337,20 @@
       "subscription_management"
     ],
     "citation_correct": true,
-    "latency_ms": 22411.836600018432,
+    "citation_faithfulness": "SUPPORTED",
+    "citation_judge_reason": "The retrieved evidence explicitly states that approved refunds are processed back to the original payment method within 5 to 10 business days. It also confirms that monthly plans are generally non-refundable, with an exception for confirmed billing errors, such as being charged after a valid cancellation. The generated answer accurately reflects these points.",
+    "citation_judge_unsupported_claims": [],
+    "latency_ms": 22781.30339999916,
+    "llm_calls": 2,
+    "prompt_tokens": 2640,
+    "completion_tokens": 198,
+    "total_tokens": 2838,
+    "cost_usd": 0.0029040000000000003,
+    "judge_llm_calls": 1,
+    "judge_prompt_tokens": 1322,
+    "judge_completion_tokens": 84,
+    "judge_total_tokens": 1406,
+    "judge_cost_usd": 0.0013936,
     "error": null
   },
   {
@@ -195,10 +363,24 @@
     ],
     "actual_sources": [
       "subscription_management",
+      "data_privacy_policy",
       "billing_policy"
     ],
     "citation_correct": true,
-    "latency_ms": 22220.010499993805,
+    "citation_faithfulness": "SUPPORTED",
+    "citation_judge_reason": "The generated answer accurately reflects the content of the first retrieved source (subscription_management). It correctly states that canceling stops renewals but retains access until the end of the paid period, that the account may move to a free tier or become read-only afterward, and that data is not deleted. All claims are supported by the provided evidence.",
+    "citation_judge_unsupported_claims": [],
+    "latency_ms": 22015.672599954996,
+    "llm_calls": 2,
+    "prompt_tokens": 2608,
+    "completion_tokens": 191,
+    "total_tokens": 2799,
+    "cost_usd": 0.0028504,
+    "judge_llm_calls": 1,
+    "judge_prompt_tokens": 1304,
+    "judge_completion_tokens": 87,
+    "judge_total_tokens": 1391,
+    "judge_cost_usd": 0.0013912,
     "error": null
   },
   {
@@ -211,10 +393,24 @@
     ],
     "actual_sources": [
       "subscription_management",
-      "api_usage_policy"
+      "api_usage_policy",
+      "billing_policy"
     ],
     "citation_correct": true,
-    "latency_ms": 22427.419099985855,
+    "citation_faithfulness": "SUPPORTED",
+    "citation_judge_reason": "The retrieved evidence from subscription_management explicitly states that upgrades take effect immediately, access is granted right away, the cost difference is prorated based on remaining days, charged to the payment method on file, and the next renewal reflects the new price. The generated answer matches these claims almost verbatim, although it cuts off abruptly at the final sentence, the material claims it successfully completes are fully supported.",
+    "citation_judge_unsupported_claims": [],
+    "latency_ms": 24166.802700026892,
+    "llm_calls": 2,
+    "prompt_tokens": 2645,
+    "completion_tokens": 173,
+    "total_tokens": 2818,
+    "cost_usd": 0.002808,
+    "judge_llm_calls": 1,
+    "judge_prompt_tokens": 1314,
+    "judge_completion_tokens": 98,
+    "judge_total_tokens": 1412,
+    "judge_cost_usd": 0.0014432000000000002,
     "error": null
   },
   {
@@ -230,7 +426,20 @@
       "billing_policy"
     ],
     "citation_correct": true,
-    "latency_ms": 22564.08400001237,
+    "citation_faithfulness": "SUPPORTED",
+    "citation_judge_reason": "The generated answer contains claims about the trial duration, payment method requirements, automatic conversion, reminder emails, and cancellation path. All of these are directly supported by the retrieved evidence from 'subscription_management'. Although the answer is cut off mid-sentence, the portion provided is factually accurate according to the evidence. Note: The user also asked about starting a second trial, which the evidence contradicts (states only one trial is allowed",
+    "citation_judge_unsupported_claims": [],
+    "latency_ms": 23550.016599998344,
+    "llm_calls": 2,
+    "prompt_tokens": 2636,
+    "completion_tokens": 187,
+    "total_tokens": 2823,
+    "cost_usd": 0.0028568,
+    "judge_llm_calls": 1,
+    "judge_prompt_tokens": 1306,
+    "judge_completion_tokens": 106,
+    "judge_total_tokens": 1412,
+    "judge_cost_usd": 0.0014688000000000001,
     "error": null
   },
   {
@@ -247,7 +456,20 @@
       "security_mfa_guide"
     ],
     "citation_correct": true,
-    "latency_ms": 22799.729400023352,
+    "citation_faithfulness": "SUPPORTED",
+    "citation_judge_reason": "The answer states that API keys are shown only once, cannot be retrieved later, and that regenerating a key immediately invalidates the old one, causing requests to fail until updated. These specific claims are directly supported by the retrieved 'api_usage_policy' evidence.",
+    "citation_judge_unsupported_claims": [],
+    "latency_ms": 22420.231500000227,
+    "llm_calls": 2,
+    "prompt_tokens": 2651,
+    "completion_tokens": 187,
+    "total_tokens": 2838,
+    "cost_usd": 0.0028688000000000003,
+    "judge_llm_calls": 1,
+    "judge_prompt_tokens": 1342,
+    "judge_completion_tokens": 72,
+    "judge_total_tokens": 1414,
+    "judge_cost_usd": 0.0013616000000000001,
     "error": null
   },
   {
@@ -260,10 +482,24 @@
     ],
     "actual_sources": [
       "api_usage_policy",
+      "billing_policy",
       "data_privacy_policy"
     ],
     "citation_correct": true,
-    "latency_ms": 22747.142200008966,
+    "citation_faithfulness": "SUPPORTED",
+    "citation_judge_reason": "The generated answer correctly states the rate limits for Standard (1,000 requests/minute) and Enterprise (5,000 requests/minute) plans, which aligns with the provided 'api_usage_policy' evidence. It also correctly notes that limits are per API key and that exceeding them results in an HTTP 429 response. Although the answer cuts off mid-sentence regarding the specific header name, the factual claims made are fully supported by the evidence.",
+    "citation_judge_unsupported_claims": [],
+    "latency_ms": 22642.615400021896,
+    "llm_calls": 2,
+    "prompt_tokens": 2682,
+    "completion_tokens": 206,
+    "total_tokens": 2888,
+    "cost_usd": 0.0029696,
+    "judge_llm_calls": 1,
+    "judge_prompt_tokens": 1378,
+    "judge_completion_tokens": 116,
+    "judge_total_tokens": 1494,
+    "judge_cost_usd": 0.0015664000000000001,
     "error": null
   },
   {
@@ -276,10 +512,24 @@
     ],
     "actual_sources": [
       "api_usage_policy",
-      "billing_policy"
+      "billing_policy",
+      "account_access_faq"
     ],
     "citation_correct": true,
-    "latency_ms": 23680.394099996192,
+    "citation_faithfulness": "SUPPORTED",
+    "citation_judge_reason": "The generated answer states that rate limits are applied per API key, not per account, which matches the evidence ('Rate limits are applied per API key, not per account, so an account with multiple keys has the limit enforced separately on each one'). The answer also states that Standard keys allow 1,000 requests/minute, Enterprise 5,000 requests/minute, and that a Retry-After header is provided with HTTP 429 responses to indicate wait times\u2014all of which are directly stated in `e",
+    "citation_judge_unsupported_claims": [],
+    "latency_ms": 23601.99559998,
+    "llm_calls": 2,
+    "prompt_tokens": 2694,
+    "completion_tokens": 188,
+    "total_tokens": 2882,
+    "cost_usd": 0.0029072000000000004,
+    "judge_llm_calls": 1,
+    "judge_prompt_tokens": 1341,
+    "judge_completion_tokens": 128,
+    "judge_total_tokens": 1469,
+    "judge_cost_usd": 0.0015848,
     "error": null
   },
   {
@@ -295,7 +545,20 @@
       "billing_policy"
     ],
     "citation_correct": true,
-    "latency_ms": 39179.880500014406,
+    "citation_faithfulness": "SUPPORTED",
+    "citation_judge_reason": "The retrieved evidence from 'data_privacy_policy' fully supports all material factual claims in the generated answer. The navigation path (Account Settings > Data > Export Data), the contents of the export (account info, logs, content; CSV/JSON formats), the exclusion of billing details like payment card numbers, the processing time (up to 48 hours), and the download link validity (expires in 7 days) are all explicitly stated in the source text. Although the generated answer is a",
+    "citation_judge_unsupported_claims": [],
+    "latency_ms": 39135.14710002346,
+    "llm_calls": 2,
+    "prompt_tokens": 2656,
+    "completion_tokens": 188,
+    "total_tokens": 2844,
+    "cost_usd": 0.0028768,
+    "judge_llm_calls": 1,
+    "judge_prompt_tokens": 1321,
+    "judge_completion_tokens": 120,
+    "judge_total_tokens": 1441,
+    "judge_cost_usd": 0.0015367999999999998,
     "error": null
   },
   {
@@ -307,12 +570,25 @@
       "data_privacy_policy"
     ],
     "actual_sources": [
-      "data_privacy_policy",
       "subscription_management",
-      "security_mfa_guide"
+      "data_privacy_policy",
+      "billing_policy"
     ],
     "citation_correct": true,
-    "latency_ms": 21502.959599980386,
+    "citation_faithfulness": "SUPPORTED",
+    "citation_judge_reason": "The retrieved evidence supports every material claim in the generated answer. Specifically, the data_privacy_policy source confirms that an active paid subscription must be canceled before account deletion, that deletion does not automatically cancel the subscription or stop billing, and that deletion is subject to a 30-day grace period during which logging back in restores the account (allowing it to be 'undone'). The subscription_management source supports the navigational path",
+    "citation_judge_unsupported_claims": [],
+    "latency_ms": 22426.470800011884,
+    "llm_calls": 2,
+    "prompt_tokens": 2630,
+    "completion_tokens": 179,
+    "total_tokens": 2809,
+    "cost_usd": 0.00282,
+    "judge_llm_calls": 1,
+    "judge_prompt_tokens": 1308,
+    "judge_completion_tokens": 106,
+    "judge_total_tokens": 1414,
+    "judge_cost_usd": 0.0014704000000000002,
     "error": null
   },
   {
@@ -325,7 +601,23 @@
     ],
     "actual_sources": [],
     "citation_correct": false,
-    "latency_ms": 24065.421500010416,
+    "citation_faithfulness": "UNSUPPORTED",
+    "citation_judge_reason": "The retrieved evidence is completely empty. According to the evaluation rules, if no evidence is provided, factual claims in the generated answer (such as the specific refund timeframe of 1-2 business days or the requirement to review billing details) cannot be considered supported by that evidence.",
+    "citation_judge_unsupported_claims": [
+      "allow 1-2 business days for the refund to appear in your account",
+      "need to review your account billing details"
+    ],
+    "latency_ms": 6700.176900019869,
+    "llm_calls": 1,
+    "prompt_tokens": 779,
+    "completion_tokens": 124,
+    "total_tokens": 903,
+    "cost_usd": 0.0011191999999999999,
+    "judge_llm_calls": 1,
+    "judge_prompt_tokens": 547,
+    "judge_completion_tokens": 99,
+    "judge_total_tokens": 646,
+    "judge_cost_usd": 0.0008336,
     "error": null
   },
   {
@@ -336,9 +628,26 @@
     "expected_sources": [
       "security_mfa_guide"
     ],
-    "actual_sources": [],
-    "citation_correct": false,
-    "latency_ms": 22938.940699998057,
+    "actual_sources": [
+      "security_mfa_guide",
+      "account_access_faq",
+      "api_usage_policy"
+    ],
+    "citation_correct": true,
+    "citation_faithfulness": "SUPPORTED",
+    "citation_judge_reason": "The generated answer accurately reflects the information in the retrieved evidence. It correctly states that two-factor authentication cannot be disabled via chat or email without a formal identity verification process (supported by the first source). It also correctly lists examples of what the verification process may involve (billing details, account creation date, recent activity), which aligns with the evidence provided in the first source. The advice to contact support is a",
+    "citation_judge_unsupported_claims": [],
+    "latency_ms": 23055.750599945895,
+    "llm_calls": 2,
+    "prompt_tokens": 2675,
+    "completion_tokens": 257,
+    "total_tokens": 2932,
+    "cost_usd": 0.003168,
+    "judge_llm_calls": 1,
+    "judge_prompt_tokens": 1314,
+    "judge_completion_tokens": 102,
+    "judge_total_tokens": 1416,
+    "judge_cost_usd": 0.0014592000000000001,
     "error": null
   },
   {
@@ -349,36 +658,82 @@
     "expected_sources": [
       "account_access_faq"
     ],
-    "actual_sources": [],
-    "citation_correct": false,
-    "latency_ms": 22963.49480000208,
+    "actual_sources": [
+      "account_access_faq",
+      "security_mfa_guide",
+      "data_privacy_policy"
+    ],
+    "citation_correct": true,
+    "citation_faithfulness": "PARTIALLY_SUPPORTED",
+    "citation_judge_reason": "The generated answer correctly identifies that changing the email without access to the old one requires contacting support for identity verification, which is supported by the first source (account_access_faq). The specific items requested for verification (full name, current email, new email, billing details, account creation date) align with the details mentioned in the security_mfa_guide (billing details, account creation date) and general identity verification practices, as ",
+    "citation_judge_unsupported_claims": [],
+    "latency_ms": 22731.747000012547,
+    "llm_calls": 2,
+    "prompt_tokens": 2655,
+    "completion_tokens": 269,
+    "total_tokens": 2924,
+    "cost_usd": 0.0031999999999999997,
+    "judge_llm_calls": 1,
+    "judge_prompt_tokens": 1335,
+    "judge_completion_tokens": 109,
+    "judge_total_tokens": 1444,
+    "judge_cost_usd": 0.0015040000000000001,
     "error": null
   },
   {
     "case_id": "TP-024",
     "expected_action": "ESCALATE",
-    "actual_action": "ESCALATE",
+    "actual_action": "ANSWER",
     "structured_output_valid": true,
     "expected_sources": [
       "billing_policy"
     ],
-    "actual_sources": [],
-    "citation_correct": false,
-    "latency_ms": 21887.741999991704,
+    "actual_sources": [
+      "billing_policy",
+      "subscription_management"
+    ],
+    "citation_correct": true,
+    "citation_faithfulness": "SUPPORTED",
+    "citation_judge_reason": "The generated answer accurately reflects the retrieved evidence. It correctly states that the standard refund policy allows requests within 14 days, identifies that the user's request (25 days) is outside this window, and notes that eligibility outside the window is assessed case by case. All factual claims made in the answer are directly supported by the 'billing_policy' source.",
+    "citation_judge_unsupported_claims": [],
+    "latency_ms": 22756.684300024062,
+    "llm_calls": 2,
+    "prompt_tokens": 2614,
+    "completion_tokens": 180,
+    "total_tokens": 2794,
+    "cost_usd": 0.0028112000000000002,
+    "judge_llm_calls": 1,
+    "judge_prompt_tokens": 1300,
+    "judge_completion_tokens": 92,
+    "judge_total_tokens": 1392,
+    "judge_cost_usd": 0.001408,
     "error": null
   },
   {
     "case_id": "TP-025",
     "expected_action": "ESCALATE",
-    "actual_action": "ESCALATE",
-    "structured_output_valid": true,
+    "actual_action": null,
+    "structured_output_valid": false,
     "expected_sources": [
       "billing_policy"
     ],
     "actual_sources": [],
-    "citation_correct": false,
-    "latency_ms": 5953.990500012878,
-    "error": null
+    "citation_correct": null,
+    "citation_faithfulness": null,
+    "citation_judge_reason": null,
+    "citation_judge_unsupported_claims": [],
+    "latency_ms": 34518.21830001427,
+    "llm_calls": 2,
+    "prompt_tokens": 2638,
+    "completion_tokens": 276,
+    "total_tokens": 2914,
+    "cost_usd": 0.0032144,
+    "judge_llm_calls": 0,
+    "judge_prompt_tokens": 0,
+    "judge_completion_tokens": 0,
+    "judge_total_tokens": 0,
+    "judge_cost_usd": 0.0,
+    "error": "BadRequestError: Error code: 400 - {'error': {'message': \"Failed to generate JSON. Please adjust your prompt. See 'failed_generation' for more details.\", 'type': 'invalid_request_error', 'code': 'json_validate_failed', 'failed_generation': '{\"reason\": \"The generated answer correctly states that bank-filed disputes cannot be resolved via self-service, that AcmeCloud is notified by the payment processor, that funds may be held, and that the restriction typically remains until the dispute is resolved. These claims are supported by the first source in the billing_policy evidence. The answer also mentions escalating to the billing team, which aligns with the policy statement that manual review by the billing team is required for non \u10e0\u0151l'}}"
   },
   {
     "case_id": "TP-026",
@@ -388,7 +743,20 @@
     "expected_sources": [],
     "actual_sources": [],
     "citation_correct": null,
-    "latency_ms": 7051.854000019375,
+    "citation_faithfulness": null,
+    "citation_judge_reason": null,
+    "citation_judge_unsupported_claims": [],
+    "latency_ms": 6852.212899946608,
+    "llm_calls": 1,
+    "prompt_tokens": 774,
+    "completion_tokens": 80,
+    "total_tokens": 854,
+    "cost_usd": 0.0009392000000000001,
+    "judge_llm_calls": 0,
+    "judge_prompt_tokens": 0,
+    "judge_completion_tokens": 0,
+    "judge_total_tokens": 0,
+    "judge_cost_usd": 0.0,
     "error": null
   },
   {
@@ -399,18 +767,44 @@
     "expected_sources": [],
     "actual_sources": [],
     "citation_correct": null,
-    "latency_ms": 6965.046900004381,
+    "citation_faithfulness": null,
+    "citation_judge_reason": null,
+    "citation_judge_unsupported_claims": [],
+    "latency_ms": 5531.310599995777,
+    "llm_calls": 1,
+    "prompt_tokens": 784,
+    "completion_tokens": 105,
+    "total_tokens": 889,
+    "cost_usd": 0.0010472,
+    "judge_llm_calls": 0,
+    "judge_prompt_tokens": 0,
+    "judge_completion_tokens": 0,
+    "judge_total_tokens": 0,
+    "judge_cost_usd": 0.0,
     "error": null
   },
   {
     "case_id": "TP-028",
     "expected_action": "ESCALATE",
-    "actual_action": "ESCALATE",
+    "actual_action": "ANSWER",
     "structured_output_valid": true,
     "expected_sources": [],
     "actual_sources": [],
     "citation_correct": null,
-    "latency_ms": 5935.77060001553,
+    "citation_faithfulness": null,
+    "citation_judge_reason": null,
+    "citation_judge_unsupported_claims": [],
+    "latency_ms": 7613.165199989453,
+    "llm_calls": 1,
+    "prompt_tokens": 789,
+    "completion_tokens": 112,
+    "total_tokens": 901,
+    "cost_usd": 0.0010792,
+    "judge_llm_calls": 0,
+    "judge_prompt_tokens": 0,
+    "judge_completion_tokens": 0,
+    "judge_total_tokens": 0,
+    "judge_cost_usd": 0.0,
     "error": null
   },
   {
@@ -419,9 +813,26 @@
     "actual_action": "ESCALATE",
     "structured_output_valid": true,
     "expected_sources": [],
-    "actual_sources": [],
+    "actual_sources": [
+      "subscription_management",
+      "security_mfa_guide",
+      "billing_policy"
+    ],
     "citation_correct": null,
-    "latency_ms": 22964.80139999767,
+    "citation_faithfulness": null,
+    "citation_judge_reason": null,
+    "citation_judge_unsupported_claims": [],
+    "latency_ms": 22491.055499995127,
+    "llm_calls": 2,
+    "prompt_tokens": 2588,
+    "completion_tokens": 162,
+    "total_tokens": 2750,
+    "cost_usd": 0.0027184,
+    "judge_llm_calls": 0,
+    "judge_prompt_tokens": 0,
+    "judge_completion_tokens": 0,
+    "judge_total_tokens": 0,
+    "judge_cost_usd": 0.0,
     "error": null
   },
   {
@@ -430,9 +841,25 @@
     "actual_action": "ESCALATE",
     "structured_output_valid": true,
     "expected_sources": [],
-    "actual_sources": [],
+    "actual_sources": [
+      "security_mfa_guide",
+      "account_access_faq"
+    ],
     "citation_correct": null,
-    "latency_ms": 23321.304899989627,
+    "citation_faithfulness": null,
+    "citation_judge_reason": null,
+    "citation_judge_unsupported_claims": [],
+    "latency_ms": 22627.830099954735,
+    "llm_calls": 2,
+    "prompt_tokens": 2632,
+    "completion_tokens": 250,
+    "total_tokens": 2882,
+    "cost_usd": 0.0031056,
+    "judge_llm_calls": 0,
+    "judge_prompt_tokens": 0,
+    "judge_completion_tokens": 0,
+    "judge_total_tokens": 0,
+    "judge_cost_usd": 0.0,
     "error": null
   }
 ]

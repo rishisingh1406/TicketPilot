@@ -35,7 +35,6 @@ def search_knowledge(
     The LLM provides only the search query.
     Retrieval policy and database access remain application-owned.
     """
-
     print("SEARCH_KNOWLEDGE: starting retrieval")
 
     results = retriever.retrieve_relevant_chunks(
@@ -95,7 +94,6 @@ class Agent:
         self.llm = llm
         self.db = db
         self.retriever = retriever
-
         self.tool_handlers = tool_handlers or {}
 
         # Latest knowledge retrieved during this agent run.
@@ -107,7 +105,6 @@ class Agent:
     # ============================================================
 
     def run(self):
-
         while self.iteration <= self.max_iterations:
 
             # ----------------------------------------------------
@@ -186,6 +183,9 @@ class Agent:
                         support_message=(
                             "Maximum agent iterations reached."
                         ),
+                        retrieved_context=(
+                            self.latest_retrieved_context
+                        ),
                     )
 
                 self.iteration += 1
@@ -195,7 +195,6 @@ class Agent:
             # ----------------------------------------------------
 
             elif response.action == AgentAction.ANSWER:
-
                 return response.model_copy(
                     update={
                         "retrieved_context": (
@@ -209,6 +208,14 @@ class Agent:
             # ----------------------------------------------------
 
             elif response.action == AgentAction.ESCALATE:
+                response = response.model_copy(
+                    update={
+                        "retrieved_context": (
+                            self.latest_retrieved_context
+                        )
+                    }
+                )
+
                 return self.escalate(response)
 
         raise RuntimeError(
@@ -229,7 +236,6 @@ class Agent:
         1. A known tool defined by the schema.
         2. Actually registered with the agent.
         """
-
         if tool is None:
             return False
 
@@ -323,7 +329,6 @@ class Agent:
     # ============================================================
 
     def generate_response(self):
-
         messages = [
             {
                 "role": "system",
@@ -353,7 +358,6 @@ class Agent:
         # ========================================================
 
         if self.retrieved_chunks:
-
             retrieved_context = "\n\n".join(
                 (
                     "<retrieved_chunk>\n"
@@ -380,7 +384,6 @@ class Agent:
         # ========================================================
 
         if self.previous_tool_calls:
-
             tool_history = []
 
             for tool_call, tool_result in zip(
@@ -424,7 +427,6 @@ class Agent:
             return response
 
         except TimeoutError as error:
-
             return AgentResponse(
                 action=AgentAction.ESCALATE,
                 user_message=(
@@ -432,6 +434,9 @@ class Agent:
                     "A support agent will review it."
                 ),
                 support_message=f"LLM timeout: {error}",
+                retrieved_context=(
+                    self.latest_retrieved_context
+                ),
             )
 
         except (
@@ -465,6 +470,9 @@ class Agent:
                         "after one retry: "
                         f"{second_error}"
                     ),
+                    retrieved_context=(
+                        self.latest_retrieved_context
+                    ),
                 )
 
     # ============================================================
@@ -488,7 +496,6 @@ class Agent:
                 value,
                 default=str,
             )
-
         except (
             TypeError,
             ValueError,
@@ -500,7 +507,6 @@ class Agent:
     # ============================================================
 
     def call_llm(self, messages):
-
         llm_response = self.llm.generate(messages)
 
         tool = None
@@ -513,37 +519,36 @@ class Agent:
         # --------------------------------------------------------
 
         if llm_response.action == AgentAction.TOOL_CALL:
-
             tool = AllowedTool(llm_response.tool)
 
             if tool == AllowedTool.SEARCH_KNOWLEDGE:
-
-                if not llm_response.tool_input:
+                if not llm_response.query.strip():
                     raise ValueError(
-                        "SEARCH_KNOWLEDGE requires tool_input"
+                        "SEARCH_KNOWLEDGE requires query"
                     )
 
-                tool_input = llm_response.tool_input
+                tool_input = {
+                    "query": llm_response.query
+                }
 
             elif tool == AllowedTool.GET_ACCOUNT:
-
                 tool_input = {}
 
             elif tool == AllowedTool.UPDATE_TICKET_STATUS:
-
-                if not llm_response.tool_input:
+                if not llm_response.status.strip():
                     raise ValueError(
-                        f"{tool} requires tool_input"
+                        f"{tool} requires status"
                     )
 
-                tool_input = llm_response.tool_input
+                tool_input = {
+                    "status": llm_response.status
+                }
 
         # --------------------------------------------------------
         # ANSWER
         # --------------------------------------------------------
 
         elif llm_response.action == AgentAction.ANSWER:
-
             user_message = llm_response.user_message
 
         # --------------------------------------------------------
@@ -551,7 +556,6 @@ class Agent:
         # --------------------------------------------------------
 
         elif llm_response.action == AgentAction.ESCALATE:
-
             user_message = llm_response.user_message
             support_message = llm_response.support_message
 
@@ -575,5 +579,4 @@ class Agent:
         Escalation implementation will be connected to the
         support handoff/persistence layer.
         """
-
         return response

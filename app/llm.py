@@ -1,6 +1,5 @@
 import json
 
-from django.http import response
 from groq import Groq
 
 from schemas import AgentLLMResponse
@@ -11,6 +10,17 @@ class GroqLLM:
     def __init__(self, api_key: str, model: str):
         self.client = Groq(api_key=api_key)
         self.model = model
+
+        self.total_prompt_tokens = 0
+        self.total_completion_tokens = 0
+        self.total_tokens = 0
+        self.call_count = 0
+
+    def reset_usage(self) -> None:
+        self.total_prompt_tokens = 0
+        self.total_completion_tokens = 0
+        self.total_tokens = 0
+        self.call_count = 0
 
     def generate(self, messages: list[dict]) -> AgentLLMResponse:
 
@@ -27,13 +37,16 @@ class GroqLLM:
                 },
             },
         )
-        print("FINISH REASON:", response.choices[0].finish_reason)
-        print("USAGE:", response.usage)
+
+        usage = response.usage
+
+        self.total_prompt_tokens += usage.prompt_tokens
+        self.total_completion_tokens += usage.completion_tokens
+        self.total_tokens += usage.total_tokens
+        self.call_count += 1
+
         content = response.choices[0].message.content
 
         data = json.loads(content)
-
-        print("RAW MODEL DATA:")
-        print(data)
 
         return AgentLLMResponse.model_validate(data)
