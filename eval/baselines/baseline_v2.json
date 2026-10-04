@@ -1,0 +1,43 @@
+{
+  "baseline": "v2",
+  "dataset": {
+    "name": "golden_set",
+    "version": "v1",
+    "cases": 30
+  },
+  "model": {
+    "provider": "Groq",
+    "name": "qwen/qwen3.8-27b"
+  },
+  "system_prompt_version": "v2",
+  "evaluation": {
+    "citation_faithfulness_rubric": "v1",
+    "promptfoo_regression_cases": 5,
+    "promptfoo_passed": 5,
+    "promptfoo_failed": 0,
+    "promptfoo_errors": 0
+  },
+  "metrics": {
+    "action_accuracy": 0.90,
+    "structured_output_validity": 0.7667,
+    "citation_correctness": 0.96,
+    "citation_faithfulness_supported": 0.7917,
+    "escalation_precision": 0.8182,
+    "escalation_recall": 0.90,
+    "average_latency_ms": 33048,
+    "p95_latency_ms": 54585,
+    "production_cost_per_ticket_usd": 0.1038,
+    "judge_cost_usd": 0.0346,
+    "total_evaluation_cost_usd": 0.1384,
+    "errors": 0
+  },
+  "limitations": [
+    "P95 latency currently exceeds the 30-second production target",
+    "Structured-output validity is 76.67%, indicating model-output instability and retry dependence",
+    "Citation faithfulness is 79.17%, with partially supported and unsupported cases",
+    "One unanswerable SAML case incorrectly produced ANSWER instead of ESCALATE",
+    "Escalation precision is 81.82%",
+    "The structured-output validity metric treats any failed attempt during an execution as invalid even when a retry succeeds",
+    "Promptfoo validates first-decision prompt behavior and is not a replacement for the full 30-case end-to-end evaluator"
+  ]
+}

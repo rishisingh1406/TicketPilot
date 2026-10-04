@@ -49,4 +49,15 @@ class GroqLLM:
 
         data = json.loads(content)
 
-        return AgentLLMResponse.model_validate(data)
+        try:
+            return AgentLLMResponse.model_validate(data)
+
+        except Exception as e:
+            print("AGENT LLM VALIDATION ERROR:")
+            print(type(e).__name__)
+            print(e)
+
+            print("VALIDATION INPUT:")
+            print(data)
+
+            raise

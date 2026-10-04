@@ -1,9 +1,11 @@
 import json
 
 from groq import BadRequestError
+
 from typing import Any, Callable
 
 from pydantic import BaseModel, ValidationError
+
 from sqlalchemy.orm import Session
 
 from app.retrieval import KnowledgeRetriever
@@ -100,11 +102,21 @@ class Agent:
         # This is attached to the final AgentResponse.
         self.latest_retrieved_context: RAGResult | None = None
 
+        # Evaluation metric:
+        # True means every structured-output attempt succeeded.
+        # If any LLM structured-output generation fails, this becomes False.
+        #
+        # A retry/fallback does not reset this value to True because
+        # the metric measures whether the model produced valid
+        # structured output during the execution.
+        self.structured_output_valid = True
+
     # ============================================================
     # Agent Loop
     # ============================================================
 
     def run(self):
+
         while self.iteration <= self.max_iterations:
 
             # ----------------------------------------------------
@@ -115,6 +127,7 @@ class Agent:
 
             print("AGENT RESPONSE:")
             print(response.model_dump())
+
             print("ACTION:", response.action)
             print("TOOL:", response.tool)
             print("TOOL INPUT:", response.tool_input)
@@ -146,7 +159,9 @@ class Agent:
                 tool_result = self.call_tool(response)
 
                 print("TOOL RESULT:")
-                print(self.serialize_for_prompt(tool_result))
+                print(
+                    self.serialize_for_prompt(tool_result)
+                )
 
                 # ------------------------------------------------
                 # Store tool call and result
@@ -195,6 +210,7 @@ class Agent:
             # ----------------------------------------------------
 
             elif response.action == AgentAction.ANSWER:
+
                 return response.model_copy(
                     update={
                         "retrieved_context": (
@@ -208,6 +224,7 @@ class Agent:
             # ----------------------------------------------------
 
             elif response.action == AgentAction.ESCALATE:
+
                 response = response.model_copy(
                     update={
                         "retrieved_context": (
@@ -236,6 +253,7 @@ class Agent:
         1. A known tool defined by the schema.
         2. Actually registered with the agent.
         """
+
         if tool is None:
             return False
 
@@ -290,6 +308,7 @@ class Agent:
             validated_input = input_model.model_validate(
                 response.tool_input
             )
+
         except ValidationError as error:
             raise RuntimeError(
                 f"Invalid input for tool {response.tool}"
@@ -329,6 +348,7 @@ class Agent:
     # ============================================================
 
     def generate_response(self):
+
         messages = [
             {
                 "role": "system",
@@ -358,6 +378,7 @@ class Agent:
         # ========================================================
 
         if self.retrieved_chunks:
+
             retrieved_context = "\n\n".join(
                 (
                     "<retrieved_chunk>\n"
@@ -384,12 +405,14 @@ class Agent:
         # ========================================================
 
         if self.previous_tool_calls:
+
             tool_history = []
 
             for tool_call, tool_result in zip(
                 self.previous_tool_calls,
                 self.previous_tool_results,
             ):
+
                 tool_history.append(
                     (
                         "<tool_call>\n"
@@ -423,10 +446,13 @@ class Agent:
         # ========================================================
 
         try:
+
             response = self.call_llm(messages)
+
             return response
 
         except TimeoutError as error:
+
             return AgentResponse(
                 action=AgentAction.ESCALATE,
                 user_message=(
@@ -445,12 +471,28 @@ class Agent:
             BadRequestError,
         ):
 
+            # ----------------------------------------------------
+            # Record structured-output failure
+            # ----------------------------------------------------
+            #
+            # Important:
+            # The retry may succeed, but the original structured
+            # output attempt was still invalid.
+            #
+            # Therefore this remains False for the entire
+            # evaluation run.
+            #
+
+            self.structured_output_valid = False
+
             # ====================================================
             # One validation retry
             # ====================================================
 
             try:
+
                 response = self.call_llm(messages)
+
                 return response
 
             except (
@@ -496,6 +538,7 @@ class Agent:
                 value,
                 default=str,
             )
+
         except (
             TypeError,
             ValueError,
@@ -507,6 +550,7 @@ class Agent:
     # ============================================================
 
     def call_llm(self, messages):
+
         llm_response = self.llm.generate(messages)
 
         tool = None
@@ -519,9 +563,11 @@ class Agent:
         # --------------------------------------------------------
 
         if llm_response.action == AgentAction.TOOL_CALL:
+
             tool = AllowedTool(llm_response.tool)
 
             if tool == AllowedTool.SEARCH_KNOWLEDGE:
+
                 if not llm_response.query.strip():
                     raise ValueError(
                         "SEARCH_KNOWLEDGE requires query"
@@ -532,9 +578,11 @@ class Agent:
                 }
 
             elif tool == AllowedTool.GET_ACCOUNT:
+
                 tool_input = {}
 
             elif tool == AllowedTool.UPDATE_TICKET_STATUS:
+
                 if not llm_response.status.strip():
                     raise ValueError(
                         f"{tool} requires status"
@@ -549,6 +597,7 @@ class Agent:
         # --------------------------------------------------------
 
         elif llm_response.action == AgentAction.ANSWER:
+
             user_message = llm_response.user_message
 
         # --------------------------------------------------------
@@ -556,6 +605,7 @@ class Agent:
         # --------------------------------------------------------
 
         elif llm_response.action == AgentAction.ESCALATE:
+
             user_message = llm_response.user_message
             support_message = llm_response.support_message
 
@@ -579,4 +629,5 @@ class Agent:
         Escalation implementation will be connected to the
         support handoff/persistence layer.
         """
+
         return response

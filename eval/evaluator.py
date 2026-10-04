@@ -3,13 +3,17 @@ import time
 from typing import Any
 
 from app.agent import Agent, search_knowledge
+
 from app.retrieval import KnowledgeRetriever
+
 from app.ticket_service import SYSTEM_PROMPT
 
 from schemas import AgentAction, AgentResponse, AllowedTool
 
 from eval.citation_judge import CitationFaithfulnessJudge
+
 from eval.metrics import evaluate_citation
+
 from eval.schemas import (
     CitationFaithfulnessResult,
     EvaluationResult,
@@ -51,7 +55,6 @@ def evaluate_case(
     intentionally isolated so that a judge failure cannot erase
     a valid production-agent result.
     """
-
     expected = case["expected"]
 
     expected_action = AgentAction(
@@ -118,18 +121,14 @@ def evaluate_case(
         return EvaluationResult(
             case_id=case["id"],
             expected_action=expected_action,
-
             actual_action=None,
             structured_output_valid=False,
-
             expected_sources=expected_sources,
             actual_sources=[],
-
             citation_correct=None,
             citation_faithfulness=None,
             citation_judge_reason=None,
             citation_judge_unsupported_claims=[],
-
             latency_ms=latency_ms,
 
             # Production-agent usage
@@ -149,7 +148,6 @@ def evaluate_case(
             production_error=(
                 f"{type(error).__name__}: {error}"
             ),
-
             citation_judge_error=None,
         )
 
@@ -179,18 +177,14 @@ def evaluate_case(
         return EvaluationResult(
             case_id=case["id"],
             expected_action=expected_action,
-
             actual_action=None,
             structured_output_valid=False,
-
             expected_sources=expected_sources,
             actual_sources=[],
-
             citation_correct=None,
             citation_faithfulness=None,
             citation_judge_reason=None,
             citation_judge_unsupported_claims=[],
-
             latency_ms=latency_ms,
 
             # Production-agent usage
@@ -211,7 +205,6 @@ def evaluate_case(
                 "Agent returned an invalid final result: "
                 f"{type(result).__name__}"
             ),
-
             citation_judge_error=None,
         )
 
@@ -320,18 +313,23 @@ def evaluate_case(
     # - production latency
     # - production token usage
     # - production cost
+    #
+    # structured_output_valid comes from the production Agent.
+    # The Agent marks it False if any structured-output failure
+    # occurs, even if the retry succeeds or the agent escalates.
     # ------------------------------------------------------------
 
     return EvaluationResult(
         case_id=case["id"],
         expected_action=expected_action,
-
         actual_action=result.action,
-        structured_output_valid=True,
+
+        # IMPORTANT:
+        # Do not hardcode this to True.
+        structured_output_valid=agent.structured_output_valid,
 
         expected_sources=expected_sources,
         actual_sources=actual_sources,
-
         citation_correct=citation_correct,
 
         citation_faithfulness=(

@@ -50,7 +50,7 @@ def main():
                 f"actual={result.actual_action} "
                 f"valid={result.structured_output_valid} "
                 f"latency={result.latency_ms:.0f}ms "
-                f"error={result.error}"
+                f"error={result.production_error}"
             )
 
     finally:
@@ -164,7 +164,7 @@ def main():
     errors = [
         result
         for result in results
-        if result.error is not None
+        if result.production_error is not None
     ]
 
     total_production_cost = sum(
@@ -272,7 +272,7 @@ def main():
         for result in errors:
             print(
                 f"- {result.case_id}: "
-                f"{result.error}"
+                f"{result.production_error}"
             )
 
     print("=" * 60)
