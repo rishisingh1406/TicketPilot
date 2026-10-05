@@ -1,8 +1,9 @@
+import os
 import requests
 import streamlit as st
 
 
-API_BASE_URL = "http://localhost:8000"
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
 
 # ============================================================
@@ -16,6 +17,7 @@ def get_reviews():
     )
     response.raise_for_status()
     return response.json()
+
 
 
 def apply_reviewer_action(
