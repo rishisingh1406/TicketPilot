@@ -34,15 +34,17 @@ COPY alembic.ini .
 COPY database.py .
 COPY models.py .
 COPY schemas.py .
+COPY start.sh .
 
 RUN useradd \
         --create-home \
         --shell /usr/sbin/nologin \
         appuser \
-    && chown -R appuser:appuser /app
+    && chown -R appuser:appuser /app \
+    && chmod +x /app/start.sh
 
 USER appuser
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["./start.sh"]
