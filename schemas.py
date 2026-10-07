@@ -762,9 +762,9 @@ class ClientResponse(BaseModel):
     """
     Response returned by the API to the user.
     """
-
     model_config = ConfigDict(extra="forbid")
 
     ticket_id: str = Field(min_length=1)
     status: TicketStatus
     message: str = Field(min_length=1)
+    agent_response: str | None = None

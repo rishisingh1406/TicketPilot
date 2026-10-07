@@ -1,13 +1,18 @@
 import logging
+import os
 import uuid
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from sqlalchemy.orm import Session
 
+from app.embeddings import EmbeddingModel
+from app.llm import GroqLLM
 from app.logging_config import configure_logging
+from app.retrieval import KnowledgeRetriever
 from app.ticket_service import (
     apply_reviewer_action,
     create_ticket as create_ticket_service,
+    generate_ticket_draft,
     get_review_queue,
     get_tickets as get_tickets_service,
 )
@@ -32,6 +37,25 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================
+# Application dependencies
+# ============================================================
+
+GROQ_API_KEY = os.environ["GROQ_API_KEY"]
+GROQ_MODEL = os.environ["GROQ_MODEL"]
+
+llm = GroqLLM(
+    api_key=GROQ_API_KEY,
+    model=GROQ_MODEL,
+)
+
+embedding_model = EmbeddingModel()
+
+retriever = KnowledgeRetriever(
+    embedding_model=embedding_model,
+)
+
+
+# ============================================================
 # Health
 # ============================================================
 
@@ -49,16 +73,42 @@ def create_ticket(
     ticket_data: CreateTicketRequest,
     db: Session = Depends(get_db),
 ):
+    # --------------------------------------------------------
+    # Step 1: Persist ticket
+    # --------------------------------------------------------
+
     new_ticket = create_ticket_service(
         db=db,
         user_id=ticket_data.user_id,
         message=ticket_data.message,
     )
 
+    # --------------------------------------------------------
+    # Step 2: Run bounded agent
+    # --------------------------------------------------------
+
+    result = generate_ticket_draft(
+        db=db,
+        ticket_id=new_ticket.ticket_id,
+        llm=llm,
+        retriever=retriever,
+    )
+
+    # --------------------------------------------------------
+    # Step 3: Return agent result
+    # --------------------------------------------------------
+
+    agent_response = None
+
+    if result is not None:
+        if hasattr(result, "generated_answer"):
+            agent_response = result.generated_answer
+
     return ClientResponse(
         ticket_id=str(new_ticket.ticket_id),
         status=new_ticket.status,
-        message="Ticket created successfully",
+        message="Ticket processed successfully",
+        agent_response=agent_response,
     )
 
 
