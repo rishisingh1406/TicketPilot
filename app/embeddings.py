@@ -1,14 +1,35 @@
-from sentence_transformers import SentenceTransformer
+import os
+
+from huggingface_hub import InferenceClient
 
 
 class EmbeddingModel:
     def __init__(self):
-        self.model = SentenceTransformer("BAAI/bge-small-en-v1.5")
+        hf_token = os.environ["HF_TOKEN"]
 
-    def embed(self, text: str) -> list[float]:
-        embedding = self.model.encode(
-            text,
-            normalize_embeddings=True,
+        self.client = InferenceClient(
+            provider="hf-inference",
+            api_key=hf_token,
         )
 
-        return embedding.tolist()
+        self.model = "BAAI/bge-small-en-v1.5"
+        self.dimensions = 384
+
+    def embed(self, text: str) -> list[float]:
+        if not text or not text.strip():
+            raise ValueError("text must not be empty")
+
+        embedding = self.client.feature_extraction(
+            text,
+            model=self.model,
+        )
+
+        embedding = embedding.squeeze().tolist()
+
+        if len(embedding) != self.dimensions:
+            raise RuntimeError(
+                f"Expected embedding dimension {self.dimensions}, "
+                f"got {len(embedding)}"
+            )
+
+        return embedding
