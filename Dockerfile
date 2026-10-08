@@ -10,9 +10,6 @@ COPY requirements.txt .
 
 RUN python -m venv /opt/venv \
     && /opt/venv/bin/pip install --upgrade pip \
-    && /opt/venv/bin/pip install \
-        --index-url https://download.pytorch.org/whl/cpu \
-        torch \
     && /opt/venv/bin/pip install -r requirements.txt
 
 

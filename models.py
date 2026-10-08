@@ -221,7 +221,7 @@ class KnowledgeChunk(Base):
     )
 
     embedding = Column(
-        Vector(384),
+        Vector(768),
         nullable=False,
     )
 
